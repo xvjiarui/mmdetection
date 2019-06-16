@@ -1,10 +1,12 @@
 import torch.nn as nn
+import apex.parallel as ap
 
 norm_cfg = {
     # format: layer_type: (abbreviation, module)
     'BN': ('bn', nn.BatchNorm2d),
     'SyncBN': ('bn', nn.SyncBatchNorm),
     'GN': ('gn', nn.GroupNorm),
+    'APSyncBN': ('bn', ap.SyncBatchNorm),
     # and potentially 'SN'
 }
 
