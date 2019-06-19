@@ -7,7 +7,7 @@ from torch.nn.modules.batchnorm import _BatchNorm
 from mmcv.cnn import constant_init, kaiming_init
 from mmcv.runner import load_checkpoint
 
-from mmdet.ops import DeformConv, ModulatedDeformConv, ContextBlock
+from mmdet.ops import DeformConv, ModulatedDeformConv, ContextBlock, SEModule
 from mmdet.models.plugins import GeneralizedAttention
 
 from ..registry import BACKBONES
@@ -29,11 +29,13 @@ class BasicBlock(nn.Module):
                  norm_cfg=dict(type='BN'),
                  dcn=None,
                  gcb=None,
+                 seb=None,
                  gen_attention=None):
         super(BasicBlock, self).__init__()
         assert dcn is None, "Not implemented yet."
         assert gen_attention is None, "Not implemented yet."
         assert gcb is None, "Not implemented yet."
+        assert seb is None, "Not implemented yet."
 
         self.norm1_name, norm1 = build_norm_layer(norm_cfg, planes, postfix=1)
         self.norm2_name, norm2 = build_norm_layer(norm_cfg, planes, postfix=2)
@@ -100,6 +102,7 @@ class Bottleneck(nn.Module):
                  norm_cfg=dict(type='BN'),
                  dcn=None,
                  gcb=None,
+                 seb=None,
                  gen_attention=None):
         """Bottleneck block for ResNet.
         If style is "pytorch", the stride-two layer is the 3x3 conv layer,
@@ -109,6 +112,7 @@ class Bottleneck(nn.Module):
         assert style in ['pytorch', 'caffe']
         assert dcn is None or isinstance(dcn, dict)
         assert gcb is None or isinstance(gcb, dict)
+        assert seb is None or isinstance(seb, dict)
         assert gen_attention is None or isinstance(gen_attention, dict)
 
         self.inplanes = inplanes
@@ -123,6 +127,8 @@ class Bottleneck(nn.Module):
         self.with_dcn = dcn is not None
         self.gcb = gcb
         self.with_gcb = gcb is not None
+        self.seb = seb
+        self.with_seb = seb is not None
         self.gen_attention = gen_attention
         self.with_gen_attention = gen_attention is not None
 
@@ -202,6 +208,10 @@ class Bottleneck(nn.Module):
             gcb_inplanes = planes * self.expansion
             self.context_block = ContextBlock(inplanes=gcb_inplanes, **gcb)
 
+        if self.with_seb:
+            seb_inplanes = planes * self.expansion
+            self.se_block = SEModule(channels=seb_inplanes, **seb)
+
         # gen_attention
         if self.with_gen_attention:
             self.gen_attention_block = GeneralizedAttention(
@@ -253,6 +263,9 @@ class Bottleneck(nn.Module):
             if self.downsample is not None:
                 identity = self.downsample(x)
 
+            if self.with_seb:
+                out = self.se_block(out)
+
             out += identity
 
             return out
@@ -279,6 +292,7 @@ def make_res_layer(block,
                    norm_cfg=dict(type='BN'),
                    dcn=None,
                    gcb=None,
+                   seb=None,
                    gen_attention=None,
                    gen_attention_blocks=[]):
     downsample = None
@@ -308,6 +322,7 @@ def make_res_layer(block,
             norm_cfg=norm_cfg,
             dcn=dcn,
             gcb=gcb,
+            seb=seb,
             gen_attention=gen_attention if
             (0 in gen_attention_blocks) else None))
     inplanes = planes * block.expansion
@@ -324,6 +339,7 @@ def make_res_layer(block,
                 norm_cfg=norm_cfg,
                 dcn=dcn,
                 gcb=gcb,
+                seb=seb,
                 gen_attention=gen_attention if
                 (i in gen_attention_blocks) else None))
 
@@ -378,6 +394,8 @@ class ResNet(nn.Module):
                  stage_with_dcn=(False, False, False, False),
                  gcb=None,
                  stage_with_gcb=(False, False, False, False),
+                 seb=None,
+                 stage_with_seb=(False, False, False, False),
                  gen_attention=None,
                  stage_with_gen_attention=((), (), (), ()),
                  with_cp=False,
@@ -408,6 +426,10 @@ class ResNet(nn.Module):
         self.stage_with_gcb = stage_with_gcb
         if gcb is not None:
             assert len(stage_with_gcb) == num_stages
+        self.seb = seb
+        self.stage_with_seb = stage_with_seb
+        if seb is not None:
+            assert len(stage_with_seb) == num_stages
         self.zero_init_residual = zero_init_residual
         self.block, stage_blocks = self.arch_settings[depth]
         self.stage_blocks = stage_blocks[:num_stages]
@@ -421,6 +443,7 @@ class ResNet(nn.Module):
             dilation = dilations[i]
             dcn = self.dcn if self.stage_with_dcn[i] else None
             gcb = self.gcb if self.stage_with_gcb[i] else None
+            seb = self.seb if self.stage_with_seb[i] else None
             planes = 64 * 2**i
             res_layer = make_res_layer(
                 self.block,
@@ -435,6 +458,7 @@ class ResNet(nn.Module):
                 norm_cfg=norm_cfg,
                 dcn=dcn,
                 gcb=gcb,
+                seb=seb,
                 gen_attention=gen_attention,
                 gen_attention_blocks=stage_with_gen_attention[i])
             self.inplanes = planes * self.block.expansion
