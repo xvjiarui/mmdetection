@@ -34,7 +34,11 @@ class NonLocal2D(nn.Module):
         self.use_scale = use_scale
         self.inter_channels = in_channels // reduction
         self.mode = mode
-        assert mode in ['embedded_gaussian', 'dot_product']
+        assert mode in ['embedded_gaussian', 'dot_product', 'gaussian']
+        if mode == 'gaussian':
+            self.with_embedded = False
+        else:
+            self.with_embedded = True
 
         # g, theta, phi are actually `nn.Conv2d`. Here we use ConvModule for
         # potential usage.
@@ -43,16 +47,17 @@ class NonLocal2D(nn.Module):
             self.inter_channels,
             kernel_size=1,
             activation=None)
-        self.theta = ConvModule(
-            self.in_channels,
-            self.inter_channels,
-            kernel_size=1,
-            activation=None)
-        self.phi = ConvModule(
-            self.in_channels,
-            self.inter_channels,
-            kernel_size=1,
-            activation=None)
+        if self.with_embedded:
+            self.theta = ConvModule(
+                self.in_channels,
+                self.inter_channels,
+                kernel_size=1,
+                activation=None)
+            self.phi = ConvModule(
+                self.in_channels,
+                self.inter_channels,
+                kernel_size=1,
+                activation=None)
         self.conv_out = ConvModule(
             self.inter_channels,
             self.in_channels,
@@ -64,7 +69,10 @@ class NonLocal2D(nn.Module):
         self.init_weights()
 
     def init_weights(self, std=0.01, zeros_init=True):
-        for m in [self.g, self.theta, self.phi]:
+        transform_list = [self.g]
+        if self.with_embedded:
+            transform_list.extend([self.theta, self.phi])
+        for m in transform_list:
             normal_init(m.conv, std=std)
         if zeros_init:
             constant_init(self.conv_out.conv, 0)
@@ -80,6 +88,9 @@ class NonLocal2D(nn.Module):
         pairwise_weight = pairwise_weight.softmax(dim=-1)
         return pairwise_weight
 
+    def gaussian(self, theta_x, phi_x):
+        return self.embedded_gaussian(theta_x, phi_x)
+
     def dot_product(self, theta_x, phi_x):
         # pairwise_weight: [N, HxW, HxW]
         pairwise_weight = torch.matmul(theta_x, phi_x)
@@ -94,11 +105,18 @@ class NonLocal2D(nn.Module):
         g_x = g_x.permute(0, 2, 1)
 
         # theta_x: [N, HxW, C]
-        theta_x = self.theta(x).view(n, self.inter_channels, -1)
-        theta_x = theta_x.permute(0, 2, 1)
+        if self.with_embedded:
+            theta_x = self.theta(x).view(n, self.inter_channels, -1)
+            theta_x = theta_x.permute(0, 2, 1)
+        else:
+            theta_x = x.view(n, self.in_channels, -1)
+            theta_x = theta_x.permute(0, 2, 1)
 
         # phi_x: [N, C, HxW]
-        phi_x = self.phi(x).view(n, self.inter_channels, -1)
+        if self.with_embedded:
+            phi_x = self.phi(x).view(n, self.inter_channels, -1)
+        else:
+            phi_x = x.view(n, self.in_channels, -1)
 
         pairwise_func = getattr(self, self.mode)
         # pairwise_weight: [N, HxW, HxW]
