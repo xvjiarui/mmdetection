@@ -39,6 +39,11 @@ def parse_args():
         '--autoscale-lr',
         action='store_true',
         help='automatically scale lr with the number of gpus')
+    parser.add_argument(
+        '--read_zip',
+        action='store_true',
+        help='read from zip file instead of image folder'
+    )
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
@@ -82,6 +87,11 @@ def main():
 
     model = build_detector(
         cfg.model, train_cfg=cfg.train_cfg, test_cfg=cfg.test_cfg)
+
+    if args.read_zip:
+        cfg.data.train.img_prefix = cfg.data.train.img_prefix[:-1] + '.zip@/'
+        cfg.data.val.img_prefix = cfg.data.val.img_prefix[:-1] + '.zip@/'
+        cfg.data.test.img_prefix = cfg.data.test.img_prefix[:-1] + '.zip@/'
 
     datasets = [build_dataset(cfg.data.train)]
     if len(cfg.workflow) == 2:
