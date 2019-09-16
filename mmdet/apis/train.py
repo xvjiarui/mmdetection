@@ -11,7 +11,7 @@ from mmdet.core import (CocoDistEvalmAPHook, CocoDistEvalRecallHook,
                         DistEvalmAPHook, DistOptimizerHook, Fp16OptimizerHook)
 from mmdet.datasets import DATASETS, build_dataloader
 from mmdet.models import RPN
-from .env import get_root_logger
+from .env import get_root_logger, get_git_info
 
 
 def parse_losses(losses):
@@ -149,6 +149,12 @@ def _dist_train(model, dataset, cfg, validate=False):
     optimizer = build_optimizer(model, cfg.optimizer)
     runner = Runner(model, batch_processor, optimizer, cfg.work_dir,
                     cfg.log_level)
+
+    # log model info
+    runner.logger.info(str(model.module))
+
+    # log git info
+    runner.logger.info(get_git_info())
 
     # fp16 setting
     fp16_cfg = cfg.get('fp16', None)

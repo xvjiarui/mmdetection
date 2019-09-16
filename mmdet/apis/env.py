@@ -8,6 +8,7 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from mmcv.runner import get_dist_info
+from .mpi import get_master_ip, gpu_indices, ompi_size, ompi_rank
 
 
 def init_dist(launcher, backend='nccl', **kwargs):
@@ -32,7 +33,21 @@ def _init_dist_pytorch(backend, **kwargs):
 
 
 def _init_dist_mpi(backend, **kwargs):
-    raise NotImplementedError
+    gpus = list(gpu_indices())
+    gpu_num = len(gpus)
+    world_size = ompi_size()
+    rank = ompi_rank()
+    dist_url = 'tcp://' + get_master_ip() + ':23456'
+    torch.cuda.set_device(int(gpus[0]))  # Set current GPU to the first
+    dist.init_process_group(
+        backend=backend,
+        init_method=dist_url,
+        world_size=world_size,
+        rank=rank,
+        group_name='mtorch')
+    print(
+        "World Size is {}, Backend is {}, Init Method is {}, rank is {}, gpu num is{}"
+        .format(world_size, backend, dist_url, ompi_rank(), gpu_num))
 
 
 def _init_dist_slurm(backend, port=29500, **kwargs):
@@ -67,3 +82,30 @@ def get_root_logger(log_level=logging.INFO):
     if rank != 0:
         logger.setLevel('ERROR')
     return logger
+
+
+def get_git_info():
+
+    def _minimal_ext_cmd(cmd):
+        # construct minimal environment
+        env = {}
+        for k in ['SYSTEMROOT', 'PATH', 'HOME']:
+            v = os.environ.get(k)
+            if v is not None:
+                env[k] = v
+        # LANGUAGE is used on win32
+        env['LANGUAGE'] = 'C'
+        env['LANG'] = 'C'
+        env['LC_ALL'] = 'C'
+        out = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, env=env).communicate()[0]
+        return out
+
+    try:
+        out = _minimal_ext_cmd(['git', 'log', '--oneline', '-1'])
+        sha = out.strip().decode('ascii')
+    except OSError:
+        sha = 'unknown'
+
+    return sha
+
