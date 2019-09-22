@@ -4,9 +4,10 @@ from .norm import build_norm_layer
 from .scale import Scale
 from .weight_init import (bias_init_with_prob, kaiming_init, normal_init,
                           uniform_init, xavier_init)
+from .convert import convert_non_inplace
 
 __all__ = [
     'conv_ws_2d', 'ConvWS2d', 'build_conv_layer', 'ConvModule',
     'build_norm_layer', 'xavier_init', 'normal_init', 'uniform_init',
-    'kaiming_init', 'bias_init_with_prob', 'Scale'
+    'kaiming_init', 'bias_init_with_prob', 'Scale', 'convert_non_inplace'
 ]

@@ -10,6 +10,7 @@ from mmdet.apis import (get_root_logger, init_dist, set_random_seed,
                         train_detector)
 from mmdet.datasets import build_dataset
 from mmdet.models import build_detector
+from mmdet.models.utils import convert_non_inplace
 
 
 def parse_args():
@@ -44,6 +45,10 @@ def parse_args():
         action='store_true',
         help='read from zip file instead of image folder'
     )
+    parser.add_argument(
+        '--non_inplace',
+        action='store_true',
+        help='make activation non_inplace')
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
@@ -87,6 +92,9 @@ def main():
 
     model = build_detector(
         cfg.model, train_cfg=cfg.train_cfg, test_cfg=cfg.test_cfg)
+
+    if args.non_inplace:
+        convert_non_inplace(model)
 
     if args.read_zip:
         cfg.data.train.img_prefix = cfg.data.train.img_prefix[:-1] + '.zip@/' + cfg.data.train.img_prefix.split('/')[-2] + '/'

@@ -1,10 +1,13 @@
 import torch.nn as nn
+import inplace_abn
 
 norm_cfg = {
     # format: layer_type: (abbreviation, module)
     'BN': ('bn', nn.BatchNorm2d),
     'SyncBN': ('bn', nn.SyncBatchNorm),
     'GN': ('gn', nn.GroupNorm),
+    'ABN': ('bn', inplace_abn.InPlaceABN),
+    'SyncABN': ('bn', inplace_abn.InPlaceABNSync),
     # and potentially 'SN'
 }
 
@@ -42,6 +45,8 @@ def build_norm_layer(cfg, num_features, postfix=''):
     requires_grad = cfg_.pop('requires_grad', True)
     cfg_.setdefault('eps', 1e-5)
     if layer_type != 'GN':
+        if 'ABN' in layer_type:
+            cfg_.setdefault('activation', 'identity')
         layer = norm_layer(num_features, **cfg_)
         if layer_type == 'SyncBN':
             layer._specify_ddp_gpu_num(1)
