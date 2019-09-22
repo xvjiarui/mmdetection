@@ -7,4 +7,4 @@ pycocotools
 torch>=1.1
 torchvision
 imagecorruptions
-git+https://github.com/mapillary/inplace_abn.git@v1.0.4
+git+git://github.com/mapillary/inplace_abn.git@v1.0.4
