@@ -97,9 +97,12 @@ def main():
         convert_non_inplace(model)
 
     if args.read_zip:
-        cfg.data.train.img_prefix = cfg.data.train.img_prefix[:-1] + '.zip@/' + cfg.data.train.img_prefix.split('/')[-2] + '/'
-        cfg.data.val.img_prefix = cfg.data.val.img_prefix[:-1] + '.zip@/' + cfg.data.val.img_prefix.split('/')[-2] + '/'
-        cfg.data.test.img_prefix = cfg.data.test.img_prefix[:-1] + '.zip@/' + cfg.data.test.img_prefix.split('/')[-2] + '/'
+        # cfg.data.train.img_prefix = cfg.data.train.img_prefix[:-1] + '.zip@/' + cfg.data.train.img_prefix.split('/')[-2] + '/'
+        # cfg.data.val.img_prefix = cfg.data.val.img_prefix[:-1] + '.zip@/' + cfg.data.val.img_prefix.split('/')[-2] + '/'
+        # cfg.data.test.img_prefix = cfg.data.test.img_prefix[:-1] + '.zip@/' + cfg.data.test.img_prefix.split('/')[-2] + '/'
+        cfg.data.train.img_prefix = cfg.data.train.img_prefix[:-1] + '.zip@/'
+        cfg.data.val.img_prefix = cfg.data.val.img_prefix[:-1] + '.zip@/'
+        cfg.data.test.img_prefix = cfg.data.test.img_prefix[:-1] + '.zip@/'
 
     datasets = [build_dataset(cfg.data.train)]
     if len(cfg.workflow) == 2:
