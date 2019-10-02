@@ -14,8 +14,7 @@ model = dict(
         gcb=dict(ratio=1. / 16., ),
         stage_with_gcb=(False, True, True, True),
         norm_eval=False,
-        norm_cfg=norm_cfg,
-        non_inplace=True),
+        norm_cfg=norm_cfg),
     neck=dict(
         type='FPN',
         in_channels=[256, 512, 1024, 2048],
