@@ -79,7 +79,7 @@ class BasicBlock(nn.Module):
         if self.downsample is not None:
             identity = self.downsample(x)
 
-        out += identity
+        out = out + identity
         out = self.relu(out)
 
         return out
@@ -262,7 +262,7 @@ class Bottleneck(nn.Module):
             if self.downsample is not None:
                 identity = self.downsample(x)
 
-            out += identity
+            out = out + identity
 
             if self.with_nlb:
                 out = self.nonlocal_block(out)
