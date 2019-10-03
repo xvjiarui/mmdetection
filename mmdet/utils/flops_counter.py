@@ -32,8 +32,9 @@ from torch.nn.modules.batchnorm import _BatchNorm
 from torch.nn.modules.conv import _ConvNd, _ConvTransposeMixin
 from torch.nn.modules.pooling import (_AdaptiveAvgPoolNd, _AdaptiveMaxPoolNd,
                                       _AvgPoolNd, _MaxPoolNd)
+from mmdet.ops.dcn import DeformConv, ModulatedDeformConv
 
-CONV_TYPES = (_ConvNd, )
+CONV_TYPES = (_ConvNd, DeformConv, ModulatedDeformConv)
 DECONV_TYPES = (_ConvTransposeMixin, )
 LINEAR_TYPES = (nn.Linear, )
 POOLING_TYPES = (_AvgPoolNd, _MaxPoolNd, _AdaptiveAvgPoolNd,
@@ -350,7 +351,7 @@ def conv_flops_counter_hook(conv_module, input, output):
 
     bias_flops = 0
 
-    if conv_module.bias is not None:
+    if getattr(conv_module, 'bias', None) is not None:
 
         bias_flops = out_channels * active_elements_count
 
