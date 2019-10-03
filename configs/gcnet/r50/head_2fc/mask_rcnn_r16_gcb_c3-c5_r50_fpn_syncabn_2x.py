@@ -11,16 +11,16 @@ model = dict(
         out_indices=(0, 1, 2, 3),
         frozen_stages=1,
         style='pytorch',
-        gcb=dict(ratio=1. / 4., ),
+        gcb=dict(ratio=1. / 16., ),
         stage_with_gcb=(False, True, True, True),
         norm_eval=False,
-        norm_cfg=norm_cfg),
+        norm_cfg=norm_cfg,
+        non_inplace=True),
     neck=dict(
         type='FPN',
         in_channels=[256, 512, 1024, 2048],
         out_channels=256,
-        num_outs=5,
-        norm_cfg=norm_cfg),
+        num_outs=5),
     rpn_head=dict(
         type='RPNHead',
         in_channels=256,
@@ -39,18 +39,15 @@ model = dict(
         out_channels=256,
         featmap_strides=[4, 8, 16, 32]),
     bbox_head=dict(
-        type='ConvFCBBoxHead',
-        num_shared_convs=4,
-        num_shared_fcs=1,
+        type='SharedFCBBoxHead',
+        num_fcs=2,
         in_channels=256,
-        conv_out_channels=256,
         fc_out_channels=1024,
         roi_feat_size=7,
         num_classes=81,
         target_means=[0., 0., 0., 0.],
         target_stds=[0.1, 0.1, 0.2, 0.2],
         reg_class_agnostic=False,
-        norm_cfg=norm_cfg,
         loss_cls=dict(
             type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
         loss_bbox=dict(type='SmoothL1Loss', beta=1.0, loss_weight=1.0)),
@@ -65,7 +62,6 @@ model = dict(
         in_channels=256,
         conv_out_channels=256,
         num_classes=81,
-        norm_cfg=norm_cfg,
         loss_mask=dict(
             type='CrossEntropyLoss', use_mask=True, loss_weight=1.0)))
 # model training and testing settings
@@ -179,7 +175,7 @@ lr_config = dict(
     warmup='linear',
     warmup_iters=500,
     warmup_ratio=1.0 / 3,
-    step=[8, 11])
+    step=[16, 22])
 checkpoint_config = dict(interval=1)
 # yapf:disable
 log_config = dict(
@@ -190,10 +186,10 @@ log_config = dict(
     ])
 # yapf:enable
 # runtime settings
-total_epochs = 12
+total_epochs = 24
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = './work_dirs/mask_rcnn_r4_gcb_c3-c5_r50_fpn_syncabn_4conv1fc_1x'
+work_dir = './work_dirs/mask_rcnn_r16_gcb_c3-c5_r50_fpn_syncabn_2x'
 load_from = None
 resume_from = None
 workflow = [('train', 1)]

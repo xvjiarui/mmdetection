@@ -22,7 +22,8 @@ class FPN(nn.Module):
                  no_norm_on_lateral=False,
                  conv_cfg=None,
                  norm_cfg=None,
-                 activation=None):
+                 activation=None,
+                 non_inplace=False):
         super(FPN, self).__init__()
         assert isinstance(in_channels, list)
         self.in_channels = in_channels
@@ -30,6 +31,7 @@ class FPN(nn.Module):
         self.num_ins = len(in_channels)
         self.num_outs = num_outs
         self.activation = activation
+        self.non_inplace = non_inplace
         self.relu_before_extra_convs = relu_before_extra_convs
         self.no_norm_on_lateral = no_norm_on_lateral
         self.fp16_enabled = False
@@ -111,8 +113,12 @@ class FPN(nn.Module):
         # build top-down path
         used_backbone_levels = len(laterals)
         for i in range(used_backbone_levels - 1, 0, -1):
-            laterals[i - 1] = laterals[i - 1] + F.interpolate(
-                laterals[i], scale_factor=2, mode='nearest')
+            if self.non_inplace:
+                laterals[i - 1] = laterals[i - 1] + F.interpolate(
+                    laterals[i], scale_factor=2, mode='nearest')
+            else:
+                laterals[i - 1] += F.interpolate(
+                    laterals[i], scale_factor=2, mode='nearest')
 
         # build outputs
         # part 1: from original levels

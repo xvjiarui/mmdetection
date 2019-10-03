@@ -28,7 +28,8 @@ class BasicBlock(nn.Module):
                  dcn=None,
                  gcb=None,
                  gen_attention=None,
-                 nlb=None):
+                 nlb=None,
+                 non_inplace=False):
         super(BasicBlock, self).__init__()
         assert dcn is None, "Not implemented yet."
         assert gen_attention is None, "Not implemented yet."
@@ -52,10 +53,11 @@ class BasicBlock(nn.Module):
             conv_cfg, planes, planes, 3, padding=1, bias=False)
         self.add_module(self.norm2_name, norm2)
 
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU(inplace=not non_inplace)
         self.downsample = downsample
         self.stride = stride
         self.dilation = dilation
+        self.non_inplace = non_inplace
         assert not with_cp
 
     @property
@@ -79,7 +81,10 @@ class BasicBlock(nn.Module):
         if self.downsample is not None:
             identity = self.downsample(x)
 
-        out = out + identity
+        if self.non_inplace:
+            out = out + identity
+        else:
+            out += identity
         out = self.relu(out)
 
         return out
@@ -101,7 +106,8 @@ class Bottleneck(nn.Module):
                  dcn=None,
                  gcb=None,
                  gen_attention=None,
-                 nlb=None):
+                 nlb=None,
+                 non_inplace=False):
         """Bottleneck block for ResNet.
         If style is "pytorch", the stride-two layer is the 3x3 conv layer,
         if it is "caffe", the stride-two layer is the first 1x1 conv layer.
@@ -199,7 +205,7 @@ class Bottleneck(nn.Module):
             bias=False)
         self.add_module(self.norm3_name, norm3)
 
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU(inplace=not non_inplace)
         self.downsample = downsample
 
         if self.with_gcb:
@@ -214,6 +220,8 @@ class Bottleneck(nn.Module):
         if self.with_nlb:
             nlb_inplanes = planes * self.expansion
             self.nonlocal_block = NonLocal2D(in_channels=nlb_inplanes, **nlb)
+
+        self.non_inplace = non_inplace
 
     @property
     def norm1(self):
@@ -262,7 +270,10 @@ class Bottleneck(nn.Module):
             if self.downsample is not None:
                 identity = self.downsample(x)
 
-            out = out + identity
+            if self.non_inplace:
+                out = out + identity
+            else:
+                out += identity
 
             if self.with_nlb:
                 out = self.nonlocal_block(out)
@@ -295,6 +306,7 @@ def make_res_layer(block,
                    gen_attention_blocks=[],
                    nlb=None,
                    nlb_blocks=[],
+                   non_inplace=False,
                    ):
     for i in range(len(nlb_blocks)):
         if nlb_blocks[i] < 0:
@@ -328,7 +340,8 @@ def make_res_layer(block,
             gcb=gcb,
             gen_attention=gen_attention if
             (0 in gen_attention_blocks) else None,
-            nlb=nlb if 0 in nlb_blocks else None
+            nlb=nlb if 0 in nlb_blocks else None,
+            non_inplace=non_inplace
         ))
     inplanes = planes * block.expansion
     for i in range(1, blocks):
@@ -346,7 +359,8 @@ def make_res_layer(block,
                 gcb=gcb,
                 gen_attention=gen_attention if
                 (i in gen_attention_blocks) else None,
-                nlb=nlb if i in nlb_blocks else None
+                nlb=nlb if i in nlb_blocks else None,
+                non_inplace=non_inplace
             ))
 
     return nn.Sequential(*layers)
@@ -405,7 +419,8 @@ class ResNet(nn.Module):
                  nlb=None,
                  stage_with_nlb=((), (), (), ()),
                  with_cp=False,
-                 zero_init_residual=True):
+                 zero_init_residual=True,
+                 non_inplace=False):
         super(ResNet, self).__init__()
         if depth not in self.arch_settings:
             raise KeyError('invalid depth {} for resnet'.format(depth))
@@ -436,6 +451,7 @@ class ResNet(nn.Module):
         if nlb is not None:
             assert len(stage_with_nlb) == num_stages
         self.zero_init_residual = zero_init_residual
+        self.non_inplace = non_inplace
         self.block, stage_blocks = self.arch_settings[depth]
         self.stage_blocks = stage_blocks[:num_stages]
         self.inplanes = 64
@@ -466,6 +482,7 @@ class ResNet(nn.Module):
                 gen_attention_blocks=stage_with_gen_attention[i],
                 nlb=nlb,
                 nlb_blocks=stage_with_nlb[i],
+                non_inplace=non_inplace,
             )
             self.inplanes = planes * self.block.expansion
             layer_name = 'layer{}'.format(i + 1)
@@ -492,7 +509,7 @@ class ResNet(nn.Module):
             bias=False)
         self.norm1_name, norm1 = build_norm_layer(self.norm_cfg, 64, postfix=1)
         self.add_module(self.norm1_name, norm1)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU(inplace=not self.non_inplace)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
     def _freeze_stages(self):

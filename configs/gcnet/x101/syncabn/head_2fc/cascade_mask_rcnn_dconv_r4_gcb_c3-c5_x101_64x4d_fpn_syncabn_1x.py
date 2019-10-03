@@ -20,14 +20,17 @@ model = dict(
             deformable_groups=1,
             fallback_on_stride=False),
         stage_with_dcn=(False, True, True, True),
+        gcb=dict(ratio=1. / 4., ),
+        stage_with_gcb=(False, True, True, True),
         norm_eval=False,
-        norm_cfg=norm_cfg),
+        norm_cfg=norm_cfg,
+        non_inplace=True),
     neck=dict(
         type='FPN',
         in_channels=[256, 512, 1024, 2048],
         out_channels=256,
         num_outs=5,
-        norm_cfg=norm_cfg),
+        non_inplace=True),
     rpn_head=dict(
         type='RPNHead',
         in_channels=256,
@@ -47,50 +50,41 @@ model = dict(
         featmap_strides=[4, 8, 16, 32]),
     bbox_head=[
         dict(
-            type='ConvFCBBoxHead',
-            num_shared_convs=4,
-            num_shared_fcs=1,
+            type='SharedFCBBoxHead',
+            num_fcs=2,
             in_channels=256,
-            conv_out_channels=256,
             fc_out_channels=1024,
             roi_feat_size=7,
             num_classes=81,
             target_means=[0., 0., 0., 0.],
             target_stds=[0.1, 0.1, 0.2, 0.2],
-            reg_class_agnostic=False,
-            norm_cfg=norm_cfg,
+            reg_class_agnostic=True,
             loss_cls=dict(
                 type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
             loss_bbox=dict(type='SmoothL1Loss', beta=1.0, loss_weight=1.0)),
         dict(
-            type='ConvFCBBoxHead',
-            num_shared_convs=4,
-            num_shared_fcs=1,
+            type='SharedFCBBoxHead',
+            num_fcs=2,
             in_channels=256,
-            conv_out_channels=256,
             fc_out_channels=1024,
             roi_feat_size=7,
             num_classes=81,
             target_means=[0., 0., 0., 0.],
             target_stds=[0.05, 0.05, 0.1, 0.1],
-            reg_class_agnostic=False,
-            norm_cfg=norm_cfg,
+            reg_class_agnostic=True,
             loss_cls=dict(
                 type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
             loss_bbox=dict(type='SmoothL1Loss', beta=1.0, loss_weight=1.0)),
         dict(
-            type='ConvFCBBoxHead',
-            num_shared_convs=4,
-            num_shared_fcs=1,
+            type='SharedFCBBoxHead',
+            num_fcs=2,
             in_channels=256,
-            conv_out_channels=256,
             fc_out_channels=1024,
             roi_feat_size=7,
             num_classes=81,
             target_means=[0., 0., 0., 0.],
             target_stds=[0.033, 0.033, 0.067, 0.067],
-            reg_class_agnostic=False,
-            norm_cfg=norm_cfg,
+            reg_class_agnostic=True,
             loss_cls=dict(
                 type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
             loss_bbox=dict(type='SmoothL1Loss', beta=1.0, loss_weight=1.0))
@@ -106,7 +100,6 @@ model = dict(
         in_channels=256,
         conv_out_channels=256,
         num_classes=81,
-        norm_cfg=norm_cfg,
         loss_mask=dict(
             type='CrossEntropyLoss', use_mask=True, loss_weight=1.0)))
 # model training and testing settings
@@ -207,11 +200,7 @@ img_norm_cfg = dict(
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True, with_mask=True),
-    dict(
-        type='Resize',
-        img_scale=[(1600, 400), (1600, 1400)],
-        multiscale_mode='range',
-        keep_ratio=True),
+    dict(type='Resize', img_scale=(1333, 800), keep_ratio=True),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size_divisor=32),
@@ -226,7 +215,7 @@ test_pipeline = [
         flip=False,
         transforms=[
             dict(type='Resize', keep_ratio=True),
-            dict(type='RandomFlip', flip_ratio=0.5),
+            dict(type='RandomFlip'),
             dict(type='Normalize', **img_norm_cfg),
             dict(type='Pad', size_divisor=32),
             dict(type='ImageToTensor', keys=['img']),
@@ -260,7 +249,7 @@ lr_config = dict(
     warmup='linear',
     warmup_iters=500,
     warmup_ratio=1.0 / 3,
-    step=[16, 19])
+    step=[8, 11])
 checkpoint_config = dict(interval=1)
 # yapf:disable
 log_config = dict(
@@ -271,10 +260,10 @@ log_config = dict(
     ])
 # yapf:enable
 # runtime settings
-total_epochs = 20
+total_epochs = 12
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = './work_dirs/cascade_mask_rcnn_dconv_c3-c5_mstrain_400_1400_x101_64x4d_fpn_syncabn_4conv1fc_20e'
+work_dir = './work_dirs/cascade_mask_rcnn_dconv_r4_gcb_c3-c5_x101_64x4d_fpn_syncabn_1x'
 load_from = None
 resume_from = None
 workflow = [('train', 1)]

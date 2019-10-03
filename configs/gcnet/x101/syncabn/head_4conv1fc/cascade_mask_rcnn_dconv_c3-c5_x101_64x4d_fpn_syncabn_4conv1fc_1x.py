@@ -18,16 +18,16 @@ model = dict(
             modulated=False, deformable_groups=1, fallback_on_stride=False, groups=64
         ),
         stage_with_dcn=(False, True, True, True),
-        gcb=dict(ratio=1. / 16., ),
-        stage_with_gcb=(False, True, True, True),
         norm_eval=False,
-        norm_cfg=norm_cfg),
+        norm_cfg=norm_cfg,
+        non_inplace=True),
     neck=dict(
         type='FPN',
         in_channels=[256, 512, 1024, 2048],
         out_channels=256,
         num_outs=5,
-        norm_cfg=norm_cfg),
+        norm_cfg=norm_cfg,
+        non_inplace=True),
     rpn_head=dict(
         type='RPNHead',
         in_channels=256,
@@ -270,7 +270,7 @@ log_config = dict(
 total_epochs = 12
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = './work_dirs/cascade_mask_rcnn_dconv_r16_gcb_c3-c5_x101_64x4d_fpn_syncabn_4conv1fc_1x'
+work_dir = './work_dirs/cascade_mask_rcnn_dconv_c3-c5_x101_64x4d_fpn_syncabn_4conv1fc_1x'
 load_from = None
 resume_from = None
 workflow = [('train', 1)]
