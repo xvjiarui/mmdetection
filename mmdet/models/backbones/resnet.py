@@ -310,7 +310,8 @@ def make_res_layer(block,
                    ):
     for i in range(len(nlb_blocks)):
         if nlb_blocks[i] < 0:
-            nlb_blocks[i] = blocks - nlb_blocks[i]
+            nlb_blocks[i] = blocks + nlb_blocks[i]
+    print(nlb_blocks)
     downsample = None
     if stride != 1 or inplanes != planes * block.expansion:
         downsample = nn.Sequential(
