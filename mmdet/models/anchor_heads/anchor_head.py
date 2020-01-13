@@ -61,9 +61,9 @@ class AnchorHead(nn.Module):
         self.use_sigmoid_cls = loss_cls.get('use_sigmoid', False)
         self.sampling = loss_cls['type'] not in ['FocalLoss', 'GHMC']
         if self.use_sigmoid_cls:
-            self.cls_out_channels = num_classes - 1
-        else:
             self.cls_out_channels = num_classes
+        else:
+            self.cls_out_channels = num_classes + 1
 
         if self.cls_out_channels <= 0:
             raise ValueError('num_classes={} is too small'.format(num_classes))
@@ -307,7 +307,9 @@ class AnchorHead(nn.Module):
                 if self.use_sigmoid_cls:
                     max_scores, _ = scores.max(dim=1)
                 else:
-                    max_scores, _ = scores[:, 1:].max(dim=1)
+                    # remind new system set FG cat_id: [0, num_class-1]
+                    # BG cat_id: num_class
+                    max_scores, _ = scores[:, :-1].max(dim=1)
                 _, topk_inds = max_scores.topk(nms_pre)
                 anchors = anchors[topk_inds, :]
                 bbox_pred = bbox_pred[topk_inds, :]
