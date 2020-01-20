@@ -2,7 +2,7 @@ import mmcv
 import numpy as np
 import torch
 from torch.nn.modules.utils import _pair
-from mmdet.ops import roi_align_v2
+from mmdet.ops import roi_align
 
 
 def mask_target(pos_proposals_list, pos_assigned_gt_inds_list, gt_masks_list,
@@ -28,7 +28,7 @@ def mask_target_single(pos_proposals, pos_assigned_gt_inds, gt_masks, cfg):
                        .index_select(0, pos_assigned_gt_inds)
                        .to(dtype=rois.dtype))
         # Use RoIAlign could apparently accelerate the training (~0.1s/iter)
-        targets = (roi_align_v2(
+        targets = (roi_align(
             gt_masks_th[:, None, :, :],
             rois, mask_size[::-1], 1.0, 0, True).squeeze(1))
         # It is important to set the target > threshold rather than >= (~0.5mAP)
