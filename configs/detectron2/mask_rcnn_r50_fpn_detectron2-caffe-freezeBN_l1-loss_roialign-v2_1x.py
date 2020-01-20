@@ -1,5 +1,5 @@
 # model settings
-norm_cfg = dict(type='BN', requires_grad=True)
+norm_cfg = dict(type='BN', requires_grad=False)
 model = dict(
     type='MaskRCNN',
     pretrained='./pretrain_detectron/ImageNetPretrained/MSRA/resnet50_msra.pth',
@@ -28,10 +28,12 @@ model = dict(
         target_stds=[1.0, 1.0, 1.0, 1.0],
         loss_cls=dict(
             type='CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
-        loss_bbox=dict(type='SmoothL1Loss', beta=1.0 / 9.0, loss_weight=1.0)),
+        loss_bbox=dict(type='SmoothL1Loss', beta=0.0, loss_weight=1.0)),
+    roi_head=dict(
+        type='BaseRoIHead',
     bbox_roi_extractor=dict(
         type='SingleRoIExtractor',
-        roi_layer=dict(type='RoIAlign', out_size=7, sample_num=2),
+        roi_layer=dict(type='RoIAlign', out_size=7),
         out_channels=256,
         featmap_strides=[4, 8, 16, 32]),
     bbox_head=dict(
@@ -40,16 +42,16 @@ model = dict(
         in_channels=256,
         fc_out_channels=1024,
         roi_feat_size=7,
-        num_classes=81,
+        num_classes=80,  # do not count BG anymore
         target_means=[0., 0., 0., 0.],
         target_stds=[0.1, 0.1, 0.2, 0.2],
         reg_class_agnostic=False,
         loss_cls=dict(
             type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
-        loss_bbox=dict(type='SmoothL1Loss', beta=1.0, loss_weight=1.0)),
+        loss_bbox=dict(type='SmoothL1Loss', beta=0.0, loss_weight=1.0)),
     mask_roi_extractor=dict(
         type='SingleRoIExtractor',
-        roi_layer=dict(type='RoIAlign', out_size=14, sample_num=2),
+        roi_layer=dict(type='RoIAlign', out_size=14),
         out_channels=256,
         featmap_strides=[4, 8, 16, 32]),
     mask_head=dict(
@@ -57,9 +59,9 @@ model = dict(
         num_convs=4,
         in_channels=256,
         conv_out_channels=256,
-        num_classes=81,
+        num_classes=80,
         loss_mask=dict(
-            type='CrossEntropyLoss', use_mask=True, loss_weight=1.0)))
+            type='CrossEntropyLoss', use_mask=True, loss_weight=1.0))))
 # model training and testing settings
 train_cfg = dict(
     rpn=dict(
@@ -68,6 +70,7 @@ train_cfg = dict(
             pos_iou_thr=0.7,
             neg_iou_thr=0.3,
             min_pos_iou=0.3,
+            match_low_quality=True,
             ignore_iof_thr=-1),
         sampler=dict(
             type='RandomSampler',
@@ -81,8 +84,10 @@ train_cfg = dict(
     rpn_proposal=dict(
         nms_across_levels=False,
         nms_pre=2000,
-        nms_post=2000,
-        max_num=2000,
+        # following the setting of detectron,
+        # which improves 0.2 bbox & mask mAP.
+        nms_post=1000,
+        max_num=1000,
         nms_thr=0.7,
         min_bbox_size=0),
     rcnn=dict(
@@ -91,6 +96,7 @@ train_cfg = dict(
             pos_iou_thr=0.5,
             neg_iou_thr=0.5,
             min_pos_iou=0.5,
+            match_low_quality=False,
             ignore_iof_thr=-1),
         sampler=dict(
             type='RandomSampler',
@@ -185,10 +191,10 @@ log_config = dict(
     interval=50,
     hooks=[
         dict(type='TextLoggerHook'),
-        # dict(type='TensorboardLoggerHook')
+        dict(type='TensorboardLoggerHook')
     ])
 # yapf:enable
-evaluation = dict(interval=12)
+evaluation = dict(interval=1)
 # runtime settings
 total_epochs = 12
 dist_params = dict(backend='nccl')

@@ -31,7 +31,7 @@ model = dict(
         loss_bbox=dict(type='SmoothL1Loss', beta=0.0, loss_weight=1.0)),
     bbox_roi_extractor=dict(
         type='SingleRoIExtractor',
-        roi_layer=dict(type='RoIAlign', out_size=7, sample_num=2),
+        roi_layer=dict(type='RoIAlign', out_size=7),
         out_channels=256,
         featmap_strides=[4, 8, 16, 32]),
     bbox_head=dict(
@@ -40,7 +40,7 @@ model = dict(
         in_channels=256,
         fc_out_channels=1024,
         roi_feat_size=7,
-        num_classes=81,
+        num_classes=80,  # do not count BG anymore
         target_means=[0., 0., 0., 0.],
         target_stds=[0.1, 0.1, 0.2, 0.2],
         reg_class_agnostic=False,
@@ -49,7 +49,7 @@ model = dict(
         loss_bbox=dict(type='SmoothL1Loss', beta=0.0, loss_weight=1.0)),
     mask_roi_extractor=dict(
         type='SingleRoIExtractor',
-        roi_layer=dict(type='RoIAlign', out_size=14, sample_num=2),
+        roi_layer=dict(type='RoIAlign', out_size=14),
         out_channels=256,
         featmap_strides=[4, 8, 16, 32]),
     mask_head=dict(
@@ -57,7 +57,7 @@ model = dict(
         num_convs=4,
         in_channels=256,
         conv_out_channels=256,
-        num_classes=81,
+        num_classes=80,  # do not count BG anymore
         loss_mask=dict(
             type='CrossEntropyLoss', use_mask=True, loss_weight=1.0)))
 # model training and testing settings

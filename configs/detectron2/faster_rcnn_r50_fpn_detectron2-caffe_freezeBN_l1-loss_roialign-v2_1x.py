@@ -29,9 +29,11 @@ model = dict(
         loss_cls=dict(
             type='CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
         loss_bbox=dict(type='SmoothL1Loss', beta=0.0, loss_weight=1.0)),
+    roi_head=dict(
+        type='BaseRoIHead',
     bbox_roi_extractor=dict(
         type='SingleRoIExtractor',
-        roi_layer=dict(type='RoIAlignV2', out_size=7),
+        roi_layer=dict(type='RoIAlign', out_size=7),
         out_channels=256,
         featmap_strides=[4, 8, 16, 32]),
     bbox_head=dict(
@@ -46,7 +48,7 @@ model = dict(
         reg_class_agnostic=False,
         loss_cls=dict(
             type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
-        loss_bbox=dict(type='SmoothL1Loss', beta=0.0, loss_weight=1.0)))
+        loss_bbox=dict(type='SmoothL1Loss', beta=0.0, loss_weight=1.0))))
 # model training and testing settings
 train_cfg = dict(
     rpn=dict(

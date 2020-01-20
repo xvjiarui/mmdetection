@@ -16,7 +16,7 @@ class SSDHead(AnchorHead):
 
     def __init__(self,
                  input_size=300,
-                 num_classes=81,
+                 num_classes=80,  # do not count BG anymore
                  in_channels=(512, 1024, 512, 256, 256, 256),
                  anchor_strides=(8, 16, 32, 64, 100, 300),
                  basesize_ratio_range=(0.1, 0.9),
