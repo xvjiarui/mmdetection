@@ -118,7 +118,7 @@ class GuidedAnchorHead(AnchorHead):
         loss_shape=dict(type='BoundedIoULoss', beta=0.2, loss_weight=1.0),
         loss_cls=dict(
             type='CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
-        loss_bbox=dict(type='SmoothL1Loss', beta=1.0,
+        loss_bbox=dict(type='SmoothL1Loss', beta=0.0,
                        loss_weight=1.0)):  # yapf: disable
         super(AnchorHead, self).__init__()
         self.in_channels = in_channels

@@ -29,7 +29,7 @@ model = dict(
         target_stds=[1.0, 1.0, 1.0, 1.0],
         loss_cls=dict(
             type='CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
-        loss_bbox=dict(type='SmoothL1Loss', beta=1.0 / 9.0, loss_weight=1.0)),
+        loss_bbox=dict(type='SmoothL1Loss', beta=0.0, loss_weight=1.0)),
     roi_head=dict(
         type='CascadeRoIHead',
         num_stages=3,
@@ -54,7 +54,7 @@ model = dict(
                     type='CrossEntropyLoss',
                     use_sigmoid=False,
                     loss_weight=1.0),
-                loss_bbox=dict(type='SmoothL1Loss', beta=1.0,
+                loss_bbox=dict(type='SmoothL1Loss', beta=0.0,
                                loss_weight=1.0)),
             dict(
                 type='SharedFCBBoxHead',
@@ -70,7 +70,7 @@ model = dict(
                     type='CrossEntropyLoss',
                     use_sigmoid=False,
                     loss_weight=1.0),
-                loss_bbox=dict(type='SmoothL1Loss', beta=1.0,
+                loss_bbox=dict(type='SmoothL1Loss', beta=0.0,
                                loss_weight=1.0)),
             dict(
                 type='SharedFCBBoxHead',
@@ -86,7 +86,7 @@ model = dict(
                     type='CrossEntropyLoss',
                     use_sigmoid=False,
                     loss_weight=1.0),
-                loss_bbox=dict(type='SmoothL1Loss', beta=1.0, loss_weight=1.0))
+                loss_bbox=dict(type='SmoothL1Loss', beta=0.0, loss_weight=1.0))
         ],
         mask_roi_extractor=dict(
             type='SingleRoIExtractor',
@@ -116,7 +116,7 @@ train_cfg = dict(
             pos_fraction=0.5,
             neg_pos_ub=-1,
             add_gt_as_proposals=False),
-        allowed_border=0,
+        allowed_border=-1,
         pos_weight=-1,
         debug=False),
     rpn_proposal=dict(
