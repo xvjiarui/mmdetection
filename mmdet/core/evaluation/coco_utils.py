@@ -166,20 +166,6 @@ def segm2json(dataset, results):
     for idx in range(len(dataset)):
         img_id = dataset.img_ids[idx]
         det, seg = results[idx]
-        if isinstance(seg, tuple):
-            if len(seg[0]) != len(det):
-                print('{} has inconsistent bbox {} and mask {}'
-                      .format(idx, len(det), len(seg[0])))
-                import pdb; pdb.set_trace()
-            if len(seg[1]) != len(det):
-                print('{} has inconsistent bbox {} and mask score {}'
-                      .format(idx, len(det), len(seg[1])))
-                import pdb; pdb.set_trace()
-        else:
-            if len(seg) != len(det):
-                print('{} has inconsistent bbox {} and mask {}'
-                      .format(idx, len(det), len(seg)))
-                import pdb; pdb.set_trace()
         for label in range(len(det)):
             # bbox results
             bboxes = det[label]
