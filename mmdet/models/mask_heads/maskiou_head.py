@@ -186,5 +186,5 @@ class MaskIoUHead(nn.Module):
         mask_scores = mask_scores.cpu().numpy()
         det_labels = det_labels.cpu().numpy()
         return [
-            mask_scores[det_labels == i] for i in range(self.num_classes - 1)
+            mask_scores[det_labels == i] for i in range(self.num_classes)
         ]

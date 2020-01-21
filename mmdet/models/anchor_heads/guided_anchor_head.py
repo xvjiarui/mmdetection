@@ -155,9 +155,9 @@ class GuidedAnchorHead(AnchorHead):
         self.cls_focal_loss = loss_cls['type'] in ['FocalLoss']
         self.loc_focal_loss = loss_loc['type'] in ['FocalLoss']
         if self.use_sigmoid_cls:
-            self.cls_out_channels = self.num_classes - 1
-        else:
             self.cls_out_channels = self.num_classes
+        else:
+            self.cls_out_channels = self.num_classes + 1
 
         # build losses
         self.loss_loc = build_loss(loss_loc)
@@ -598,7 +598,9 @@ class GuidedAnchorHead(AnchorHead):
                 if self.use_sigmoid_cls:
                     max_scores, _ = scores.max(dim=1)
                 else:
-                    max_scores, _ = scores[:, 1:].max(dim=1)
+                    # remind new system set FG cat_id: [0, num_class-1]
+                    # BG cat_id: num_class
+                    max_scores, _ = scores[:, :-1].max(dim=1)
                 _, topk_inds = max_scores.topk(nms_pre)
                 anchors = anchors[topk_inds, :]
                 bbox_pred = bbox_pred[topk_inds, :]
@@ -613,7 +615,7 @@ class GuidedAnchorHead(AnchorHead):
         mlvl_scores = torch.cat(mlvl_scores)
         if self.use_sigmoid_cls:
             padding = mlvl_scores.new_zeros(mlvl_scores.shape[0], 1)
-            mlvl_scores = torch.cat([padding, mlvl_scores], dim=1)
+            mlvl_scores = torch.cat([mlvl_scores, padding], dim=1)
         # multi class NMS
         det_bboxes, det_labels = multiclass_nms(mlvl_bboxes, mlvl_scores,
                                                 cfg.score_thr, cfg.nms,

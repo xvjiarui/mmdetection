@@ -441,7 +441,7 @@ def print_map_summary(mean_ap,
         num_gts[:, i] = cls_result['num_gts']
 
     if dataset is None:
-        label_names = [str(i) for i in range(1, num_classes + 1)]
+        label_names = [str(i) for i in range(0, num_classes)]
     elif mmcv.is_str(dataset):
         label_names = get_classes(dataset)
     else:
