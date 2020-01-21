@@ -89,12 +89,13 @@ def merge_aug_masks(aug_masks, img_metas, rcnn_test_cfg, weights=None):
     Returns:
         tuple: (bboxes, scores)
     """
-    recovered_masks = torch.cat([
-        mask[..., None] if not img_info[0]['flip'] else mask[..., ::-1, None]
+    recovered_masks = [
+        mask if not img_info[0]['flip'] else mask[..., ::-1]
         for mask, img_info in zip(aug_masks, img_metas)
-    ], dim=-1)
+    ]
     if weights is None:
-        merged_masks = torch.mean(recovered_masks, dim=-1)
+        merged_masks = np.mean(recovered_masks, axis=0)
     else:
-        merged_masks = recovered_masks.matmul(weights)
+        merged_masks = np.average(
+            np.array(recovered_masks), axis=0, weights=np.array(weights))
     return merged_masks

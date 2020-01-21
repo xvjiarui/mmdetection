@@ -333,7 +333,7 @@ class CascadeRoIHead(nn.Module, BBoxTestMixin, MaskTestMixin):
                     if self.with_shared_head:
                         mask_feats = self.shared_head(mask_feats)
                     mask_pred = self.mask_head[i](mask_feats)
-                    aug_masks.append(mask_pred.sigmoid())
+                    aug_masks.append(mask_pred.sigmoid().cpu().numpy())
                 merged_masks = merge_aug_masks(aug_masks,
                                                [img_meta] * self.num_stages,
                                                self.test_cfg)
@@ -432,7 +432,7 @@ class CascadeRoIHead(nn.Module, BBoxTestMixin, MaskTestMixin):
                         if self.with_shared_head:
                             mask_feats = self.shared_head(mask_feats)
                         mask_pred = self.mask_head[i](mask_feats)
-                        aug_masks.append(mask_pred.sigmoid())
+                        aug_masks.append(mask_pred.sigmoid().cpu().numpy())
                         aug_img_metas.append(img_meta)
                 merged_masks = merge_aug_masks(aug_masks, aug_img_metas,
                                                self.test_cfg)
