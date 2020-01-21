@@ -204,8 +204,8 @@ class MaskTestMixin(object):
                 if self.with_shared_head:
                     mask_feats = self.shared_head(mask_feats)
                 mask_pred = self.mask_head(mask_feats)
-                # convert to numpy array to save memory
-                aug_masks.append(mask_pred.sigmoid().cpu().numpy())
+                # convert to cpu tensor to save memory
+                aug_masks.append(mask_pred.sigmoid().cpu())
             merged_masks = merge_aug_masks(aug_masks, img_metas, self.test_cfg)
 
             ori_shape = img_metas[0][0]['ori_shape']

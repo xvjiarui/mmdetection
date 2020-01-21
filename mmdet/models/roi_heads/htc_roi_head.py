@@ -331,6 +331,8 @@ class HybridTaskCascadeRoIHead(CascadeRoIHead):
                 mask_classes = self.mask_head[-1].num_classes
                 segm_result = [[] for _ in range(mask_classes)]
             else:
+                if not isinstance(scale_factor, float):
+                    scale_factor = torch.from_numpy(scale_factor).to(det_bboxes.device)
                 _bboxes = (
                     det_bboxes[:, :4] *
                     scale_factor if rescale else det_bboxes)
@@ -351,7 +353,7 @@ class HybridTaskCascadeRoIHead(CascadeRoIHead):
                         mask_pred, last_feat = mask_head(mask_feats, last_feat)
                     else:
                         mask_pred = mask_head(mask_feats)
-                    aug_masks.append(mask_pred.sigmoid().cpu().numpy())
+                    aug_masks.append(mask_pred.sigmoid())
                 merged_masks = merge_aug_masks(aug_masks,
                                                [img_meta] * self.num_stages,
                                                self.test_cfg)
@@ -469,7 +471,7 @@ class HybridTaskCascadeRoIHead(CascadeRoIHead):
                                 mask_feats, last_feat)
                         else:
                             mask_pred = mask_head(mask_feats)
-                        aug_masks.append(mask_pred.sigmoid().cpu().numpy())
+                        aug_masks.append(mask_pred.sigmoid())
                         aug_img_metas.append(img_meta)
                 merged_masks = merge_aug_masks(aug_masks, aug_img_metas,
                                                self.test_cfg)
