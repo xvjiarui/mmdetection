@@ -92,6 +92,7 @@ class BBoxHead(nn.Module):
             pos_gt_labels,
             rcnn_train_cfg,
             reg_classes,
+            num_classes=self.num_classes,
             target_means=self.target_means,
             target_stds=self.target_stds)
         return cls_reg_targets
