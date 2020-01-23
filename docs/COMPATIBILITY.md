@@ -52,11 +52,8 @@ This effect all the classification layers of the model to have a different order
 - Low quality matching in RCNN is not used. In MMDetection 1.0 and previous versions, the `max_iou_assigner` will match low quality boxes for each ground truth box in both rpn and rcnn training. We observe this sometimes does not assign the most perfect GT box to some bounding boxes,
 thus MMDetection 1.1 do not allow low quality matching by default in rcnn training in the new system. This slightly improve the box AP (~0.1% absolute).
 
-<<<<<<< HEAD
-=======
 - Seperate scale factors for width and height. In MMDetection 1.0 and previous versions, the scale factor is a single float in mode `keep_ratio=True`. This is slightly inaccurate because the scale factors for width and height have slight difference. MMDetection 1.1 adopts separate scale factors for width and height, the improvment on AP is negligible, though.
 
->>>>>>> 317615da8dadc46a2851687b08ce2e91f161c257
 ### Training Hyperparameters
 
 There are some other differences in training as well.
