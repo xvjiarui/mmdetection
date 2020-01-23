@@ -216,7 +216,8 @@ if __name__ == '__main__':
                 name='roi_align_cuda',
                 module='mmdet.ops.roi_align',
                 sources=[
-                    'src/ROIAlign.cpp', 'src/ROIAlign_cpu.cpp', 'src/ROIAlign_cuda.cu'
+                    'src/ROIAlign.cpp', 'src/ROIAlign_cpu.cpp',
+                    'src/ROIAlign_cuda.cu'
                 ]),
         ],
         cmdclass={'build_ext': BuildExtension},

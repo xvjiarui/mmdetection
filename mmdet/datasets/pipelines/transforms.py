@@ -155,6 +155,25 @@ class Resize(object):
                 ]
             results[key] = masks
 
+    def _resize_poly_masks(self, results):
+        for key in results.get('mask_fields', []):
+            if results[key] is None:
+                continue
+            new_h, new_w = results['img_shape'][:2]
+            ori_h, ori_w = results['ori_shape'][:2]
+            ratio_h = new_h / ori_h
+            ratio_w = new_w / ori_w
+            scaled_polygons = []
+            for polygons_per_instance in results[key]:
+                scaled_polygon = []
+                for p in polygons_per_instance:
+                    p = p.copy()
+                    p[0::2] *= ratio_w
+                    p[1::2] *= ratio_h
+                    scaled_polygon.append(p)
+                scaled_polygons.append(scaled_polygon)
+            results[key] = scaled_polygons
+
     def _resize_seg(self, results):
         for key in results.get('seg_fields', []):
             if self.keep_ratio:
@@ -170,7 +189,10 @@ class Resize(object):
             self._random_scale(results)
         self._resize_img(results)
         self._resize_bboxes(results)
-        self._resize_masks(results)
+        if results.get('poly_mask', False):
+            self._resize_poly_masks(results)
+        else:
+            self._resize_masks(results)
         self._resize_seg(results)
         return results
 
@@ -225,6 +247,36 @@ class RandomFlip(object):
                 'Invalid flipping direction "{}"'.format(direction))
         return flipped
 
+    def poly_mask_flip(self, polygons, img_shape, direction):
+        """Flip bboxes horizontally.
+
+        Args:
+            polygons(list of ndarray)
+            img_shape(tuple): (height, width)
+        """
+        flipped_polygons = []
+        if direction == 'horizontal':
+            w = img_shape[1]
+            for polygons_per_instance in polygons:
+                flipped_polyons_per_instance = []
+                for p in polygons_per_instance:
+                    p = p.copy()
+                    p[0::2] = w - p[0::2]
+                    flipped_polyons_per_instance.append(p)
+                flipped_polygons.append(flipped_polyons_per_instance)
+        elif direction == 'vertical':
+            h = img_shape[1]
+            for polygons_per_instance in polygons:
+                flipped_polyons_per_instance = []
+                for p in polygons_per_instance:
+                    p = p.copy()
+                    p[1::2] = h - p[1::2]
+                    flipped_polyons_per_instance.append(p)
+                flipped_polygons.append(flipped_polyons_per_instance)
+        else:
+            assert NotImplementedError
+        return flipped_polygons
+
     def __call__(self, results):
         if 'flip' not in results:
             flip = True if np.random.rand() < self.flip_ratio else False
@@ -241,11 +293,17 @@ class RandomFlip(object):
                                               results['img_shape'],
                                               results['flip_direction'])
             # flip masks
-            for key in results.get('mask_fields', []):
-                results[key] = [
-                    mmcv.imflip(mask, direction=results['flip_direction'])
-                    for mask in results[key]
-                ]
+            if results.get('poly_mask', False):
+                for key in results.get('mask_fields', []):
+                    results[key] = self.poly_mask_flip(
+                        results[key], results['img_shape'],
+                        results['flip_direction'])
+            else:
+                for key in results.get('mask_fields', []):
+                    results[key] = [
+                        mmcv.imflip(mask, direction=results['flip_direction'])
+                        for mask in results[key]
+                    ]
 
             # flip segs
             for key in results.get('seg_fields', []):
@@ -308,7 +366,8 @@ class Pad(object):
 
     def __call__(self, results):
         self._pad_img(results)
-        self._pad_masks(results)
+        if not results.get('poly_mask', False):
+            self._pad_masks(results)
         self._pad_seg(results)
         return results
 

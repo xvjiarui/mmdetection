@@ -54,7 +54,7 @@ class BBoxHead(nn.Module):
         else:
             in_channels *= self.roi_feat_area
         if self.with_cls:
-            # add background class 
+            # add background class
             self.fc_cls = nn.Linear(in_channels, num_classes + 1)
         if self.with_reg:
             out_dim_reg = 4 if reg_class_agnostic else 4 * num_classes
@@ -121,7 +121,6 @@ class BBoxHead(nn.Module):
             bg_class_ind = self.num_classes
             # 0~self.num_classes-1 are FG, self.num_classes is BG
             pos_inds = (labels >= 0) & (labels < bg_class_ind)
-            
             # do not perform bounding box regression for BG anymore.
             if pos_inds.any():
                 if self.reg_class_agnostic:

@@ -48,9 +48,11 @@ def bbox_target_single(pos_bboxes,
     num_neg = neg_bboxes.size(0)
     num_samples = num_pos + num_neg
     # original implementation uses new_zeros since BG are set to be 0
-    # now use empty & fill because BG cat_id = num_classes, FG cat_id = [0, num_classes-1]
-    # the reg_classes is 1 in HTC and Cascade so we should not use reg_classes
-    labels = pos_bboxes.new_empty(num_samples, dtype=torch.long).fill_(num_classes)
+    # now use empty & fill because BG cat_id = num_classes, 
+    # FG cat_id = [0, num_classes-1]
+    # the reg_classes is 1 in Cascade methods so we should not use reg_classes
+    labels = pos_bboxes.new_empty(
+        num_samples, dtype=torch.long).fill_(num_classes)
     label_weights = pos_bboxes.new_zeros(num_samples)
     bbox_targets = pos_bboxes.new_zeros(num_samples, 4)
     bbox_weights = pos_bboxes.new_zeros(num_samples, 4)

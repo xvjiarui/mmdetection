@@ -14,15 +14,16 @@ from .anchor_head import AnchorHead
 @HEADS.register_module
 class SSDHead(AnchorHead):
 
-    def __init__(self,
-                 input_size=300,
-                 num_classes=80,  # do not count BG anymore
-                 in_channels=(512, 1024, 512, 256, 256, 256),
-                 anchor_strides=(8, 16, 32, 64, 100, 300),
-                 basesize_ratio_range=(0.1, 0.9),
-                 anchor_ratios=([2], [2, 3], [2, 3], [2, 3], [2], [2]),
-                 target_means=(.0, .0, .0, .0),
-                 target_stds=(1.0, 1.0, 1.0, 1.0)):
+    def __init__(
+        self,
+        input_size=300,
+        num_classes=80,  # do not count BG anymore
+        in_channels=(512, 1024, 512, 256, 256, 256),
+        anchor_strides=(8, 16, 32, 64, 100, 300),
+        basesize_ratio_range=(0.1, 0.9),
+        anchor_ratios=([2], [2, 3], [2, 3], [2, 3], [2], [2]),
+        target_means=(.0, .0, .0, .0),
+        target_stds=(1.0, 1.0, 1.0, 1.0)):
         super(AnchorHead, self).__init__()
         self.input_size = input_size
         self.num_classes = num_classes
@@ -41,7 +42,7 @@ class SSDHead(AnchorHead):
             cls_convs.append(
                 nn.Conv2d(
                     in_channels[i],
-                    num_anchors[i] * (num_classes+1),
+                    num_anchors[i] * (num_classes + 1),
                     kernel_size=3,
                     padding=1))
         self.reg_convs = nn.ModuleList(reg_convs)
@@ -114,8 +115,8 @@ class SSDHead(AnchorHead):
             cls_score, labels, reduction='none') * label_weights
         # FG cat_id: [0, num_classes -1], BG cat_id: num_classes
         bg_class_ind = self.num_classes
-        pos_inds = (
-            (labels >= 0) & (labels < bg_class_ind)).nonzero().reshape(-1)
+        pos_inds = ((labels >= 0) &
+                    (labels < bg_class_ind)).nonzero().reshape(-1)
         neg_inds = (labels == bg_class_ind).nonzero().view(-1)
 
         num_pos_samples = pos_inds.size(0)
@@ -148,11 +149,9 @@ class SSDHead(AnchorHead):
 
         device = cls_scores[0].device
 
-        anchor_list, valid_flag_list = self.get_anchors(
-            featmap_sizes, img_metas, device=device)
+        anchor_list = self.get_anchors(featmap_sizes, img_metas, device=device)
         cls_reg_targets = anchor_target(
             anchor_list,
-            valid_flag_list,
             gt_bboxes,
             img_metas,
             self.target_means,

@@ -54,7 +54,7 @@ class TwoStageDetector(BaseDetector, RPNTestMixin):
     @property
     def with_roi_head(self):
         return hasattr(self, 'roi_head') and self.roi_head is not None
-    
+
     @property
     def with_shared_head(self):
         return hasattr(self.roi_head,
@@ -148,7 +148,6 @@ class TwoStageDetector(BaseDetector, RPNTestMixin):
             dict[str, Tensor]: a dictionary of loss components
         """
         x = self.extract_feat(img)
-
         losses = dict()
 
         # RPN forward and loss

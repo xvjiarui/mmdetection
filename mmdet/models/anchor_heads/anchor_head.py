@@ -16,7 +16,7 @@ class AnchorHead(nn.Module):
     """Anchor-based head (RPN, RetinaNet, SSD, etc.).
 
     Args:
-        num_classes (int): Number of categories including the background
+        num_classes (int): Number of categories not including the background
             category.
         in_channels (int): Number of channels in the input feature map.
         feat_channels (int): Number of hidden channels. Used in child classes.
@@ -106,7 +106,7 @@ class AnchorHead(nn.Module):
             device (torch.device | str): device for returned tensors
 
         Returns:
-            tuple: anchors of each image, valid flags of each image
+            tuple: anchors of each image
         """
         num_imgs = len(img_metas)
         num_levels = len(featmap_sizes)
@@ -119,24 +119,7 @@ class AnchorHead(nn.Module):
                 featmap_sizes[i], self.anchor_strides[i], device=device)
             multi_level_anchors.append(anchors)
         anchor_list = [multi_level_anchors for _ in range(num_imgs)]
-
-        # for each image, we compute valid flags of multi level anchors
-        valid_flag_list = []
-        for img_id, img_meta in enumerate(img_metas):
-            multi_level_flags = []
-            for i in range(num_levels):
-                anchor_stride = self.anchor_strides[i]
-                feat_h, feat_w = featmap_sizes[i]
-                h, w, _ = img_meta['pad_shape']
-                valid_feat_h = min(int(np.ceil(h / anchor_stride)), feat_h)
-                valid_feat_w = min(int(np.ceil(w / anchor_stride)), feat_w)
-                flags = self.anchor_generators[i].valid_flags(
-                    (feat_h, feat_w), (valid_feat_h, valid_feat_w),
-                    device=device)
-                multi_level_flags.append(flags)
-            valid_flag_list.append(multi_level_flags)
-
-        return anchor_list, valid_flag_list
+        return anchor_list
 
     def loss_single(self, cls_score, bbox_pred, labels, label_weights,
                     bbox_targets, bbox_weights, num_total_samples, cfg):
@@ -172,12 +155,10 @@ class AnchorHead(nn.Module):
 
         device = cls_scores[0].device
 
-        anchor_list, valid_flag_list = self.get_anchors(
-            featmap_sizes, img_metas, device=device)
+        anchor_list = self.get_anchors(featmap_sizes, img_metas, device=device)
         label_channels = self.cls_out_channels if self.use_sigmoid_cls else 1
         cls_reg_targets = anchor_target(
             anchor_list,
-            valid_flag_list,
             gt_bboxes,
             img_metas,
             self.target_means,
@@ -193,6 +174,7 @@ class AnchorHead(nn.Module):
          num_total_pos, num_total_neg) = cls_reg_targets
         num_total_samples = (
             num_total_pos + num_total_neg if self.sampling else num_total_pos)
+
         losses_cls, losses_bbox = multi_apply(
             self.loss_single,
             cls_scores,
