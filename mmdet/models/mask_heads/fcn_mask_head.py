@@ -147,7 +147,6 @@ class FCNMaskHead(nn.Module):
         Returns:
             list[list]: encoded masks
         """
-        device = mask_pred.device
         if isinstance(mask_pred, torch.Tensor):
             mask_pred = mask_pred.sigmoid()
         else:
