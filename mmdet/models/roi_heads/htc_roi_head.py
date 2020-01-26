@@ -140,7 +140,7 @@ class HybridTaskCascadeRoIHead(CascadeRoIHead):
                     mask_feats, last_feat, return_logits=False)
             mask_pred = mask_head(mask_feats, last_feat, return_feat=False)
         else:
-            mask_pred = mask_head(mask_feats)
+            mask_pred = mask_head(mask_feats, return_feat=False)
 
         mask_targets = mask_head.get_target(sampling_results, gt_masks,
                                             rcnn_train_cfg)
@@ -332,7 +332,8 @@ class HybridTaskCascadeRoIHead(CascadeRoIHead):
                 segm_result = [[] for _ in range(mask_classes)]
             else:
                 if not isinstance(scale_factor, (float, torch.Tensor)):
-                    scale_factor = torch.from_numpy(scale_factor).to(det_bboxes.device)
+                    scale_factor = torch.from_numpy(scale_factor).to(
+                        det_bboxes.device)
                 _bboxes = (
                     det_bboxes[:, :4] *
                     scale_factor if rescale else det_bboxes)
