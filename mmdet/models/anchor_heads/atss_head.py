@@ -137,7 +137,10 @@ class ATSSHead(AnchorHead):
         loss_cls = self.loss_cls(
             cls_score, labels, label_weights, avg_factor=num_total_samples)
 
-        pos_inds = torch.nonzero(labels).squeeze(1)
+        # FG cat_id: [0, num_classes -1], BG cat_id: num_classes
+        bg_class_ind = self.num_classes
+        pos_inds = ((labels >= 0)
+                    & (labels < bg_class_ind)).nonzero().squeeze(1)
 
         if len(pos_inds) > 0:
             pos_bbox_targets = bbox_targets[pos_inds]
@@ -332,7 +335,7 @@ class ATSSHead(AnchorHead):
 
         mlvl_scores = torch.cat(mlvl_scores)
         padding = mlvl_scores.new_zeros(mlvl_scores.shape[0], 1)
-        mlvl_scores = torch.cat([padding, mlvl_scores], dim=1)
+        mlvl_scores = torch.cat([mlvl_scores, padding], dim=1)
         mlvl_centerness = torch.cat(mlvl_centerness)
 
         det_bboxes, det_labels = multiclass_nms(
@@ -445,6 +448,8 @@ class ATSSHead(AnchorHead):
 
         pos_inds = sampling_result.pos_inds
         neg_inds = sampling_result.neg_inds
+        if gt_labels is not None:
+            labels += self.num_classes
         if len(pos_inds) > 0:
             pos_bbox_targets = bbox2delta(sampling_result.pos_bboxes,
                                           sampling_result.pos_gt_bboxes,
