@@ -223,8 +223,11 @@ def _dist_train(model,
     dataset = dataset if isinstance(dataset, (list, tuple)) else [dataset]
     data_loaders = [
         build_dataloader(
-            ds, cfg.data.imgs_per_gpu, cfg.data.workers_per_gpu, dist=True)
-        for ds in dataset
+            ds,
+            cfg.data.imgs_per_gpu,
+            cfg.data.workers_per_gpu,
+            dist=True,
+            seed=cfg.seed) for ds in dataset
     ]
     # put model on gpus
     model = MMDistributedDataParallel(
