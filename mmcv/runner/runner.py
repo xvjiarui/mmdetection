@@ -41,6 +41,7 @@ class Runner(object):
                  log_level=logging.INFO,
                  logger=None):
         assert callable(batch_processor)
+        self.env_info = None
         self.model = model
         if optimizer is not None:
             self.optimizer = self.init_optimizer(optimizer)

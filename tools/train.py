@@ -13,6 +13,7 @@ from mmdet import __version__
 from mmdet.apis import get_root_logger, set_random_seed, train_detector
 from mmdet.datasets import build_dataset
 from mmdet.models import build_detector
+from tools.collect_env import collect_env
 
 
 def parse_args():
@@ -31,7 +32,7 @@ def parse_args():
         default=1,
         help='number of gpus to use '
         '(only applicable to non-distributed training)')
-    parser.add_argument('--seed', type=int, default=None, help='random seed')
+    parser.add_argument('--seed', type=int, default=0, help='random seed')
     parser.add_argument(
         '--deterministic',
         action='store_true',
@@ -85,16 +86,20 @@ def main():
     log_file = osp.join(cfg.work_dir, '{}.log'.format(timestamp))
     logger = get_root_logger(log_file=log_file, log_level=cfg.log_level)
 
+    # log env info
+    env_info_dict = collect_env()
+    env_info = '\n'.join([('{}: {}'.format(k, v))
+                          for k, v in env_info_dict.items()])
+    logger.info('Environment info:\n' + env_info + '\n')
+    env_info_dict['seed'] = args.seed
     # log some basic info
     logger.info('Distributed training: {}'.format(distributed))
-    logger.info('MMDetection Version: {}'.format(__version__))
     logger.info('Config:\n{}'.format(cfg.text))
 
     # set random seeds
-    if args.seed is not None:
-        logger.info('Set random seed to {}, deterministic: {}'.format(
-            args.seed, args.deterministic))
-        set_random_seed(args.seed, deterministic=args.deterministic)
+    logger.info('Set random seed to {}, deterministic: {}'.format(
+        args.seed, args.deterministic))
+    set_random_seed(args.seed, deterministic=args.deterministic)
     cfg.seed = args.seed
 
     model = build_detector(
@@ -118,7 +123,8 @@ def main():
         cfg,
         distributed=distributed,
         validate=args.validate,
-        timestamp=timestamp)
+        timestamp=timestamp,
+        env_info_dict=env_info_dict)
 
 
 if __name__ == '__main__':

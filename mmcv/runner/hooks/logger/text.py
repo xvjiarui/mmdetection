@@ -21,6 +21,17 @@ class TextLoggerHook(LoggerHook):
         self.start_iter = runner.iter
         self.json_log_path = osp.join(runner.work_dir,
                                       '{}.log.json'.format(runner.timestamp))
+        self._ana_env_info(runner)
+
+    def _ana_env_info(self, runner):
+        log_dict = dict()
+        for k, v in runner.env_info.items():
+            if k in [
+                    'CUDA_HOME', 'PyTorch', 'TorchVision', 'MMDetection',
+                    'MMCV', 'seed'
+            ] or 'GPU' in k:
+                log_dict[k] = v
+        self._dump_log(log_dict, runner)
 
     def _get_max_memory(self, runner):
         mem = torch.cuda.max_memory_allocated()

@@ -111,7 +111,8 @@ def train_detector(model,
                    cfg,
                    distributed=False,
                    validate=False,
-                   timestamp=None):
+                   timestamp=None,
+                   env_info_dict=None):
     logger = get_root_logger(cfg.log_level)
 
     # start training
@@ -122,7 +123,8 @@ def train_detector(model,
             cfg,
             validate=validate,
             logger=logger,
-            timestamp=timestamp)
+            timestamp=timestamp,
+            env_info_dict=env_info_dict)
     else:
         _non_dist_train(
             model,
@@ -130,7 +132,8 @@ def train_detector(model,
             cfg,
             validate=validate,
             logger=logger,
-            timestamp=timestamp)
+            timestamp=timestamp,
+            env_info_dict=env_info_dict)
 
 
 def build_optimizer(model, optimizer_cfg):
@@ -218,7 +221,8 @@ def _dist_train(model,
                 cfg,
                 validate=False,
                 logger=None,
-                timestamp=None):
+                timestamp=None,
+                env_info_dict=None):
     # prepare data loaders
     dataset = dataset if isinstance(dataset, (list, tuple)) else [dataset]
     data_loaders = [
@@ -252,6 +256,8 @@ def _dist_train(model,
     runner.register_training_hooks(cfg.lr_config, optimizer_config,
                                    cfg.checkpoint_config, cfg.log_config)
     runner.register_hook(DistSamplerSeedHook())
+    runner.env_info = env_info_dict
+
     # register eval hooks
     if validate:
         val_dataset_cfg = cfg.data.val
@@ -281,7 +287,8 @@ def _non_dist_train(model,
                     cfg,
                     validate=False,
                     logger=None,
-                    timestamp=None):
+                    timestamp=None,
+                    env_info_dict=None):
     if validate:
         raise NotImplementedError('Built-in validation is not implemented '
                                   'yet in not-distributed training. Use '
@@ -315,6 +322,7 @@ def _non_dist_train(model,
         optimizer_config = cfg.optimizer_config
     runner.register_training_hooks(cfg.lr_config, optimizer_config,
                                    cfg.checkpoint_config, cfg.log_config)
+    runner.env_info = env_info_dict
 
     if cfg.resume_from:
         runner.resume(cfg.resume_from)
