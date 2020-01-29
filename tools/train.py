@@ -90,7 +90,7 @@ def main():
     env_info_dict = collect_env()
     env_info = '\n'.join([('{}: {}'.format(k, v))
                           for k, v in env_info_dict.items()])
-    logger.info('Environment info:\n' + env_info + '\n')
+    logger.info('Environment info:\n' + '-' * 60 + '\n' + env_info + '\n')
     env_info_dict['seed'] = args.seed
     # log some basic info
     logger.info('Distributed training: {}'.format(distributed))
