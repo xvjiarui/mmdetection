@@ -1,4 +1,5 @@
 import mmcv
+import torch
 
 from mmdet.core import bbox_mapping, tensor2imgs
 from .. import builder
@@ -64,7 +65,10 @@ class RPN(BaseDetector, RPNTestMixin):
         proposal_list = self.simple_test_rpn(x, img_meta, self.test_cfg.rpn)
         if rescale:
             for proposals, meta in zip(proposal_list, img_meta):
-                proposals[:, :4] /= meta['scale_factor']
+                scale_factor = meta['scale_factor']
+                if not isinstance(scale_factor, (float, torch.Tensor)):
+                    scale_factor = proposals.new_tensor(meta['scale_factor'])
+                proposals[:, :4] /= scale_factor
         # TODO: remove this restriction
         return proposal_list[0].cpu().numpy()
 
