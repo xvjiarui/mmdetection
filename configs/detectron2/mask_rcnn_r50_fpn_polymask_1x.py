@@ -1,17 +1,14 @@
 # model settings
-norm_cfg = dict(type='BN', requires_grad=False)
 model = dict(
     type='MaskRCNN',
-    pretrained='./pretrain_detectron/ImageNetPretrained/MSRA/resnet50_msra.pth',
+    pretrained='torchvision://resnet50',
     backbone=dict(
         type='ResNet',
         depth=50,
         num_stages=4,
         out_indices=(0, 1, 2, 3),
         frozen_stages=1,
-        norm_cfg=norm_cfg,
-        norm_eval=True,
-        style='caffe'),
+        style='pytorch'),
     neck=dict(
         type='FPN',
         in_channels=[256, 512, 1024, 2048],
@@ -29,37 +26,39 @@ model = dict(
         loss_cls=dict(
             type='CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
         loss_bbox=dict(type='SmoothL1Loss', beta=0.0, loss_weight=1.0)),
-    bbox_roi_extractor=dict(
-        type='SingleRoIExtractor',
-        roi_layer=dict(type='RoIAlignV2', out_size=7),
-        out_channels=256,
-        featmap_strides=[4, 8, 16, 32]),
-    bbox_head=dict(
-        type='SharedFCBBoxHead',
-        num_fcs=2,
-        in_channels=256,
-        fc_out_channels=1024,
-        roi_feat_size=7,
-        num_classes=80,  # do not count BG anymore
-        target_means=[0., 0., 0., 0.],
-        target_stds=[0.1, 0.1, 0.2, 0.2],
-        reg_class_agnostic=False,
-        loss_cls=dict(
-            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
-        loss_bbox=dict(type='SmoothL1Loss', beta=0.0, loss_weight=1.0)),
-    mask_roi_extractor=dict(
-        type='SingleRoIExtractor',
-        roi_layer=dict(type='RoIAlignV2', out_size=14),
-        out_channels=256,
-        featmap_strides=[4, 8, 16, 32]),
-    mask_head=dict(
-        type='FCNMaskHead',
-        num_convs=4,
-        in_channels=256,
-        conv_out_channels=256,
-        num_classes=80,
-        loss_mask=dict(
-            type='CrossEntropyLoss', use_mask=True, loss_weight=1.0)))
+    roi_head=dict(
+        type='BaseRoIHead',
+        bbox_roi_extractor=dict(
+            type='SingleRoIExtractor',
+            roi_layer=dict(type='RoIAlign', out_size=7),
+            out_channels=256,
+            featmap_strides=[4, 8, 16, 32]),
+        bbox_head=dict(
+            type='SharedFCBBoxHead',
+            num_fcs=2,
+            in_channels=256,
+            fc_out_channels=1024,
+            roi_feat_size=7,
+            num_classes=80,  # do not count BG anymore
+            target_means=[0., 0., 0., 0.],
+            target_stds=[0.1, 0.1, 0.2, 0.2],
+            reg_class_agnostic=False,
+            loss_cls=dict(
+                type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
+            loss_bbox=dict(type='SmoothL1Loss', beta=0.0, loss_weight=1.0)),
+        mask_roi_extractor=dict(
+            type='SingleRoIExtractor',
+            roi_layer=dict(type='RoIAlign', out_size=14),
+            out_channels=256,
+            featmap_strides=[4, 8, 16, 32]),
+        mask_head=dict(
+            type='FCNMaskHead',
+            num_convs=4,
+            in_channels=256,
+            conv_out_channels=256,
+            num_classes=80,
+            loss_mask=dict(
+                type='CrossEntropyLoss', use_mask=True, loss_weight=1.0))))
 # model training and testing settings
 train_cfg = dict(
     rpn=dict(
@@ -76,7 +75,7 @@ train_cfg = dict(
             pos_fraction=0.5,
             neg_pos_ub=-1,
             add_gt_as_proposals=False),
-        allowed_border=0,
+        allowed_border=-1,
         pos_weight=-1,
         debug=False),
     rpn_proposal=dict(
@@ -121,14 +120,8 @@ test_cfg = dict(
 # dataset settings
 dataset_type = 'CocoDataset'
 data_root = 'data/coco/'
-# Values to be used for image normalization (BGR order)
-# Default values are the mean pixel value from ImageNet: [103.53, 116.28, 123.675]
-# When using pre-trained models in Detectron1 or any MSRA models,
-# std has been absorbed into its conv1 weights, so the std needs to be set 1.
-img_norm_cfg = dict(  # The 
-    mean=[103.530, 116.280, 123.675],
-    std=[1.0, 1.0, 1.0],
-    to_rgb=False)
+img_norm_cfg = dict(
+    mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
