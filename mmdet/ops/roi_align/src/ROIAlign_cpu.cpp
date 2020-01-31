@@ -429,7 +429,7 @@ at::Tensor ROIAlign_forward_cpu(
   AT_DISPATCH_FLOATING_TYPES_AND_HALF(input.type(), "ROIAlign_forward", [&] {
     ROIAlignForward<scalar_t>(
         output_size,
-        input.contiguous().data_ptr<scalar_t>(),
+        input.contiguous().data<scalar_t>(),
         spatial_scale,
         channels,
         height,
@@ -437,8 +437,8 @@ at::Tensor ROIAlign_forward_cpu(
         pooled_height,
         pooled_width,
         sampling_ratio,
-        rois.contiguous().data_ptr<scalar_t>(),
-        output.data_ptr<scalar_t>(),
+        rois.contiguous().data<scalar_t>(),
+        output.data<scalar_t>(),
         aligned);
   });
   return output;
@@ -481,7 +481,7 @@ at::Tensor ROIAlign_backward_cpu(
   AT_DISPATCH_FLOATING_TYPES_AND_HALF(grad.type(), "ROIAlign_forward", [&] {
     ROIAlignBackward<scalar_t>(
         grad.numel(),
-        grad.contiguous().data_ptr<scalar_t>(),
+        grad.contiguous().data<scalar_t>(),
         spatial_scale,
         channels,
         height,
@@ -489,8 +489,8 @@ at::Tensor ROIAlign_backward_cpu(
         pooled_height,
         pooled_width,
         sampling_ratio,
-        grad_input.data_ptr<scalar_t>(),
-        rois.contiguous().data_ptr<scalar_t>(),
+        grad_input.data<scalar_t>(),
+        rois.contiguous().data<scalar_t>(),
         n_stride,
         c_stride,
         h_stride,
