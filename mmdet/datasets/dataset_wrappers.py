@@ -1,4 +1,8 @@
+import math
+from collections import defaultdict
+
 import numpy as np
+from torch.utils.data import Dataset
 from torch.utils.data.dataset import ConcatDataset as _ConcatDataset
 
 from .registry import DATASETS
@@ -53,3 +57,63 @@ class RepeatDataset(object):
 
     def __len__(self):
         return self.times * self._ori_len
+
+
+@DATASETS.register_module
+class RepeatFactorDataset(Dataset):
+
+    def __init__(self, dataset, repeat_thr):
+        self.dataset = dataset
+        self.repeat_thr = repeat_thr
+        self.CLASSES = dataset.CLASSES
+
+        repeat_factors = self._get_repeat_factors(dataset, repeat_thr)
+        repeat_indices = []
+        for dataset_index, repeat_factor in enumerate(repeat_factors):
+            repeat_indices.extend([dataset_index] * int(repeat_factor))
+        self.repeat_indices = repeat_indices
+
+        flags = []
+        if hasattr(self.dataset, 'flag'):
+            for flag, repeat_factor in zip(self.dataset.flag, repeat_factors):
+                flags.extend([flag] * int(repeat_factor))
+            assert len(flags) == len(repeat_indices)
+        self.flag = np.asarray(flags, dtype=np.uint8)
+
+    def _get_repeat_factors(self, dataset, repeat_thr):
+        # 1. For each category c, compute the fraction # of images
+        # that contain it: f(c)
+        category_freq = defaultdict(int)
+        for img_info in dataset.img_infos:  # For each image (without repeats)
+            cat_ids = set(img_info['category_ids'])
+            for cat_id in cat_ids:
+                category_freq[cat_id] += 1
+        num_images = len(dataset)
+        for k, v in category_freq.items():
+            category_freq[k] = v / num_images
+
+        # 2. For each category c, compute the category-level repeat factor:
+        #    r(c) = max(1, sqrt(t / f(c)))
+        category_repeat = {
+            cat_id: max(1.0, math.sqrt(repeat_thr / cat_freq))
+            for cat_id, cat_freq in category_freq.items()
+        }
+
+        # 3. For each image I, compute the image-level repeat factor:
+        #    r(I) = max_{c in I} r(c)
+        repeat_factors = []
+        for img_info in dataset.img_infos:
+            cat_ids = set(img_info['category_ids'])
+            repeat_factor = max(
+                {category_repeat[cat_id]
+                 for cat_id in cat_ids})
+            repeat_factors.append(repeat_factor)
+
+        return repeat_factors
+
+    def __getitem__(self, idx):
+        ori_index = self.repeat_indices[idx]
+        return self.dataset[ori_index]
+
+    def __len__(self):
+        return len(self.repeat_indices)

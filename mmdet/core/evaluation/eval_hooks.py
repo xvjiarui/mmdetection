@@ -5,6 +5,7 @@ import mmcv
 import numpy as np
 import torch
 import torch.distributed as dist
+from lvis.eval import LVISEval, LVISResults
 from mmcv.parallel import collate, scatter
 from mmcv.runner import Hook
 from pycocotools.cocoeval import COCOeval
@@ -147,6 +148,40 @@ class CocoDistEvalmAPHook(DistEvalHook):
             runner.log_buffer.output['{}_mAP_copypaste'.format(res_type)] = (
                 '{ap[0]:.3f} {ap[1]:.3f} {ap[2]:.3f} {ap[3]:.3f} '
                 '{ap[4]:.3f} {ap[5]:.3f}').format(ap=cocoEval.stats[:6])
+        runner.log_buffer.ready = True
+        for res_type in res_types:
+            os.remove(result_files[res_type])
+
+
+class LvisDistEvalmAPHook(DistEvalHook):
+
+    def evaluate(self, runner, results):
+        tmp_file = osp.join(runner.work_dir, 'temp_0')
+        result_files = results2json(self.dataset, results, tmp_file)
+
+        res_types = ['bbox', 'segm']
+
+        lvis_gt = self.dataset.lvis
+        for res_type in res_types:
+            try:
+                lvis_dt = LVISResults(lvis_gt, result_files[res_type])
+            except IndexError:
+                print('No prediction found.')
+                break
+            iou_type = res_type
+            lvis_eval = LVISEval(lvis_gt, lvis_dt, iou_type)
+            lvis_eval.evaluate()
+            lvis_eval.accumulate()
+            lvis_eval.summarize()
+            for k, v in lvis_eval.get_results():
+                key = '{}_{}'.format(res_type, k)
+                val = float('{:.3f}'.format(v))
+                runner.log_buffer.output[key] = val
+            runner.log_buffer.output['{}_AP_copypaste'.format(res_type)] = \
+                ' '.join(['{}:{.3f}'.format(k, v)
+                          for k, v in lvis_eval.get_results()])
+            lvis_eval.print_results()
+
         runner.log_buffer.ready = True
         for res_type in res_types:
             os.remove(result_files[res_type])

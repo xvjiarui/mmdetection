@@ -1,7 +1,7 @@
 import copy
 
 from mmdet.utils import build_from_cfg
-from .dataset_wrappers import ConcatDataset, RepeatDataset
+from .dataset_wrappers import ConcatDataset, RepeatDataset, RepeatFactorDataset
 from .registry import DATASETS
 
 
@@ -33,6 +33,9 @@ def build_dataset(cfg, default_args=None):
     elif cfg['type'] == 'RepeatDataset':
         dataset = RepeatDataset(
             build_dataset(cfg['dataset'], default_args), cfg['times'])
+    elif cfg['type'] == 'RepeatFactorDataset':
+        dataset = RepeatFactorDataset(
+            build_dataset(cfg['dataset'], default_args), cfg['repeat_thr'])
     elif isinstance(cfg['ann_file'], (list, tuple)):
         dataset = _concat_dataset(cfg, default_args)
     else:
