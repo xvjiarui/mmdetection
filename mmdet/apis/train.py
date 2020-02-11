@@ -12,7 +12,8 @@ from mmcv.runner import (DistSamplerSeedHook, Runner, get_dist_info,
 
 from mmdet import datasets
 from mmdet.core import (CocoDistEvalmAPHook, CocoDistEvalRecallHook,
-                        DistEvalmAPHook, DistOptimizerHook, Fp16OptimizerHook)
+                        DistEvalmAPHook, DistOptimizerHook, Fp16OptimizerHook,
+                        LvisDistEvalmAPHook)
 from mmdet.datasets import DATASETS, build_dataloader
 from mmdet.models import RPN
 
@@ -20,7 +21,8 @@ from mmdet.models import RPN
 def get_root_logger(log_file=None, log_level=logging.INFO):
     logger = logging.getLogger('mmdet')
     # if the logger has been initialized, just return it
-    if logger.hasHandlers():
+    logger.setLevel(logging.INFO)
+    if len(logger.handlers) > 0:
         return logger
 
     logging.basicConfig(
@@ -273,6 +275,9 @@ def _dist_train(model,
             if issubclass(dataset_type, datasets.CocoDataset):
                 runner.register_hook(
                     CocoDistEvalmAPHook(val_dataset_cfg, **eval_cfg))
+            elif issubclass(dataset_type, datasets.LvisDataset):
+                runner.register_hook(
+                    LvisDistEvalmAPHook(val_dataset_cfg, **eval_cfg))
             else:
                 runner.register_hook(
                     DistEvalmAPHook(val_dataset_cfg, **eval_cfg))

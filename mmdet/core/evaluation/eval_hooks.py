@@ -173,13 +173,13 @@ class LvisDistEvalmAPHook(DistEvalHook):
             lvis_eval.evaluate()
             lvis_eval.accumulate()
             lvis_eval.summarize()
-            for k, v in lvis_eval.get_results():
+            for k, v in lvis_eval.get_results().items():
                 key = '{}_{}'.format(res_type, k)
-                val = float('{:.3f}'.format(v))
+                val = float('{:.3f}'.format(float(v)))
                 runner.log_buffer.output[key] = val
             runner.log_buffer.output['{}_AP_copypaste'.format(res_type)] = \
-                ' '.join(['{}:{.3f}'.format(k, v)
-                          for k, v in lvis_eval.get_results()])
+                ' '.join(['{}:{:.3f}'.format(k, float(v))
+                          for k, v in lvis_eval.get_results().items()])
             lvis_eval.print_results()
 
         runner.log_buffer.ready = True
