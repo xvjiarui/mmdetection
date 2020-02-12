@@ -22,11 +22,18 @@ def get_root_logger(log_file=None, log_level=logging.INFO):
         logging.Logger: The root logger.
     """
     logger = logging.getLogger(__name__.split('.')[0])  # i.e., mmdet
-    # if the logger has been initialized, just return it
-    if logger.hasHandlers():
-        return logger
-
     format_str = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    # if the logger has been initialized, just return it
+    # TODO logger could be initialized by packages, fix by checking every handler # noqa
+    if logger.hasHandlers():
+        if len(logger.handlers) > 0:
+            return logger
+        else:
+            for h in logging.root.handlers:
+                if h.formatter is None:
+                    h.setFormatter(format_str)
+            logger.setLevel(logging.INFO)
+
     logging.basicConfig(format=format_str, level=log_level)
     rank, _ = get_dist_info()
     if rank != 0:
