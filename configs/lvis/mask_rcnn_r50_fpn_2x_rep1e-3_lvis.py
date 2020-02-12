@@ -145,10 +145,13 @@ data = dict(
     imgs_per_gpu=2,
     workers_per_gpu=2,
     train=dict(
-        type=dataset_type,
-        ann_file=data_root + 'annotations/lvis_v0.5_val.json',
-        img_prefix=data_root + 'val2017/',
-        pipeline=train_pipeline),
+        type='RepeatFactorDataset',
+        repeat_thr=0.001,
+        dataset=dict(
+            type=dataset_type,
+            ann_file=data_root + 'annotations/lvis_v0.5_train.json',
+            img_prefix=data_root + 'train2017/',
+            pipeline=train_pipeline)),
     val=dict(
         type=dataset_type,
         ann_file=data_root + 'annotations/lvis_v0.5_val.json',
@@ -169,7 +172,7 @@ lr_config = dict(
     warmup='linear',
     warmup_iters=500,
     warmup_ratio=1.0 / 3,
-    step=[8, 11])
+    step=[16, 22])
 checkpoint_config = dict(interval=1)
 # yapf:disable
 log_config = dict(
@@ -180,10 +183,10 @@ log_config = dict(
     ])
 # yapf:enable
 # runtime settings
-total_epochs = 12
+total_epochs = 24
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = './work_dirs/lvis/mask_rcnn_r50_fpn_1x_lvis'
+work_dir = './work_dirs/lvis/mask_rcnn_r50_fpn_2x_rep1e-3_lvis'
 load_from = None
 resume_from = None
 workflow = [('train', 1)]
