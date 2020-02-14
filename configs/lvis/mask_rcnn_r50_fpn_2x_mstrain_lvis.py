@@ -107,7 +107,7 @@ test_cfg = dict(
         nms_thr=0.7,
         min_bbox_size=0),
     rcnn=dict(
-        score_thr=0.05,
+        score_thr=0.0001,
         nms=dict(type='nms', iou_thr=0.5),
         max_per_img=300,
         mask_thr_binary=0.5))
@@ -119,7 +119,12 @@ img_norm_cfg = dict(
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True, with_mask=True),
-    dict(type='Resize', img_scale=(1333, 800), keep_ratio=True),
+    dict(
+        type='Resize',
+        img_scale=[(1333, 640), (1333, 672), (1333, 704), (1333, 736),
+                   (1333, 768), (1333, 800)],
+        multiscale_mode='value',
+        keep_ratio=True),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size_divisor=32),
@@ -146,8 +151,8 @@ data = dict(
     workers_per_gpu=2,
     train=dict(
         type=dataset_type,
-        ann_file=data_root + 'annotations/lvis_v0.5_val.json',
-        img_prefix=data_root + 'val2017/',
+        ann_file=data_root + 'annotations/lvis_v0.5_train.json',
+        img_prefix=data_root + 'train2017/',
         pipeline=train_pipeline),
     val=dict(
         type=dataset_type,
@@ -183,7 +188,7 @@ log_config = dict(
 total_epochs = 24
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-work_dir = './work_dirs/lvis/mask_rcnn_r50_fpn_2x_lvis'
+work_dir = './work_dirs/lvis/mask_rcnn_r50_fpn_2x_mstrain_lvis'
 load_from = None
 resume_from = None
 workflow = [('train', 1)]

@@ -70,13 +70,14 @@ class RepeatFactorDataset(object):
         repeat_factors = self._get_repeat_factors(dataset, repeat_thr)
         repeat_indices = []
         for dataset_index, repeat_factor in enumerate(repeat_factors):
-            repeat_indices.extend([dataset_index] * int(repeat_factor))
+            repeat_indices.extend([dataset_index] *
+                                  int(math.ceil(repeat_factor)))
         self.repeat_indices = repeat_indices
 
         flags = []
         if hasattr(self.dataset, 'flag'):
             for flag, repeat_factor in zip(self.dataset.flag, repeat_factors):
-                flags.extend([flag] * int(repeat_factor))
+                flags.extend([flag] * int(math.ceil(repeat_factor)))
             assert len(flags) == len(repeat_indices)
         self.flag = np.asarray(flags, dtype=np.uint8)
 
