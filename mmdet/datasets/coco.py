@@ -4,12 +4,12 @@ import tempfile
 
 import mmcv
 import numpy as np
-from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
 from mmdet.core import eval_recalls
 from mmdet.utils import print_log
 from .custom import CustomDataset
+from .dataset_api import API
 from .registry import DATASETS
 
 
@@ -32,30 +32,30 @@ class CocoDataset(CustomDataset):
                'vase', 'scissors', 'teddy_bear', 'hair_drier', 'toothbrush')
 
     def load_annotations(self, ann_file):
-        self.coco = COCO(ann_file)
-        self.cat_ids = self.coco.getCatIds()
+        self.api = API(ann_file, 'COCO')
+        self.cat_ids = self.api.get_cat_ids()
         self.cat2label = {
             cat_id: i + 1
             for i, cat_id in enumerate(self.cat_ids)
         }
-        self.img_ids = self.coco.getImgIds()
+        self.img_ids = self.api.get_img_ids()
         img_infos = []
         for i in self.img_ids:
-            info = self.coco.loadImgs([i])[0]
+            info = self.api.load_imgs([i])[0]
             info['filename'] = info['file_name']
             img_infos.append(info)
         return img_infos
 
     def get_ann_info(self, idx):
         img_id = self.img_infos[idx]['id']
-        ann_ids = self.coco.getAnnIds(imgIds=[img_id])
-        ann_info = self.coco.loadAnns(ann_ids)
+        ann_ids = self.api.get_ann_ids(img_ids=[img_id])
+        ann_info = self.api.load_anns(ann_ids)
         return self._parse_ann_info(self.img_infos[idx], ann_info)
 
     def _filter_imgs(self, min_size=32):
         """Filter images too small or without ground truths."""
         valid_inds = []
-        ids_with_ann = set(_['image_id'] for _ in self.coco.anns.values())
+        ids_with_ann = set(_['image_id'] for _ in self.api.anns.values())
         for i, img_info in enumerate(self.img_infos):
             if self.filter_empty_gt and self.img_ids[i] not in ids_with_ann:
                 continue
@@ -239,8 +239,8 @@ class CocoDataset(CustomDataset):
     def fast_eval_recall(self, results, proposal_nums, iou_thrs, logger=None):
         gt_bboxes = []
         for i in range(len(self.img_ids)):
-            ann_ids = self.coco.getAnnIds(imgIds=self.img_ids[i])
-            ann_info = self.coco.loadAnns(ann_ids)
+            ann_ids = self.api.get_ann_ids(img_ids=self.img_ids[i])
+            ann_info = self.api.load_anns(ann_ids)
             if len(ann_info) == 0:
                 gt_bboxes.append(np.zeros((0, 4)))
                 continue
@@ -304,7 +304,7 @@ class CocoDataset(CustomDataset):
         result_files = self.results2json(results, jsonfile_prefix)
 
         eval_results = {}
-        cocoGt = self.coco
+        cocoGt = self.api
         for metric in metrics:
             msg = 'Evaluating {}...'.format(metric)
             if logger is None:

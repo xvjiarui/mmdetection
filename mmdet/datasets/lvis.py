@@ -3,11 +3,11 @@ import os.path as osp
 import tempfile
 
 import numpy as np
-from lvis import LVIS, LVISEval, LVISResults
+from lvis import LVISEval, LVISResults
 
-from mmdet.core import eval_recalls
 from mmdet.utils import print_log
 from .coco import CocoDataset
+from .dataset_api import API
 from .registry import DATASETS
 
 
@@ -15,69 +15,26 @@ from .registry import DATASETS
 class LvisDataset(CocoDataset):
 
     def load_annotations(self, ann_file):
-        self.lvis = LVIS(ann_file)
-        self.cat_ids = self.lvis.get_cat_ids()
+        self.api = API(ann_file, 'LVIS')
+        self.cat_ids = self.api.get_cat_ids()
         self.cat2label = {
             cat_id: i + 1
             for i, cat_id in enumerate(self.cat_ids)
         }
         self.CLASSES = [None] * len(self.cat_ids)
-        for cat_id, value in self.lvis.cats.items():
+        for cat_id, value in self.api.cats.items():
             self.CLASSES[self.cat2label[cat_id] - 1] = value['name']
         self.CLASSES = tuple(self.CLASSES)
-        self.img_ids = self.lvis.get_img_ids()
+        self.img_ids = self.api.get_img_ids()
         img_infos = []
         for i in self.img_ids:
-            info = self.lvis.load_imgs([i])[0]
+            info = self.api.load_imgs([i])[0]
             info['filename'] = info['file_name']
-            ann_ids = self.lvis.get_ann_ids(img_ids=[i])
-            ann_info = self.lvis.load_anns(ann_ids)
-            info['category_ids'] = [
-                self.cat2label[_['category_id']] for _ in ann_info
-            ]
+            ann_ids = self.api.get_ann_ids(img_ids=[i])
+            ann_info = self.api.load_anns(ann_ids)
+            info['category_ids'] = [_['category_id'] for _ in ann_info]
             img_infos.append(info)
         return img_infos
-
-    def get_ann_info(self, idx):
-        img_id = self.img_infos[idx]['id']
-        ann_ids = self.lvis.get_ann_ids(img_ids=[img_id])
-        ann_info = self.lvis.load_anns(ann_ids)
-        return self._parse_ann_info(self.img_infos[idx], ann_info)
-
-    def _filter_imgs(self, min_size=32):
-        """Filter images too small or without ground truths."""
-        valid_inds = []
-        ids_with_ann = set(_['image_id'] for _ in self.lvis.anns.values())
-        for i, img_info in enumerate(self.img_infos):
-            if self.filter_empty_gt and self.img_ids[i] not in ids_with_ann:
-                continue
-            if min(img_info['width'], img_info['height']) >= min_size:
-                valid_inds.append(i)
-        return valid_inds
-
-    def fast_eval_recall(self, results, proposal_nums, iou_thrs, logger=None):
-        gt_bboxes = []
-        for i in range(len(self.img_ids)):
-            ann_ids = self.lvis.get_ann_ids(img_ids=self.img_ids[i])
-            ann_info = self.lvis.load_anns(ann_ids)
-            if len(ann_info) == 0:
-                gt_bboxes.append(np.zeros((0, 4)))
-                continue
-            bboxes = []
-            for ann in ann_info:
-                if ann.get('ignore', False) or ann['iscrowd']:
-                    continue
-                x1, y1, w, h = ann['bbox']
-                bboxes.append([x1, y1, x1 + w - 1, y1 + h - 1])
-            bboxes = np.array(bboxes, dtype=np.float32)
-            if bboxes.shape[0] == 0:
-                bboxes = np.zeros((0, 4))
-            gt_bboxes.append(bboxes)
-
-        recalls = eval_recalls(
-            gt_bboxes, results, proposal_nums, iou_thrs, logger=logger)
-        ar = recalls.mean(axis=1)
-        return ar
 
     def evaluate(self,
                  results,
@@ -123,7 +80,7 @@ class LvisDataset(CocoDataset):
         result_files = self.results2json(results, jsonfile_prefix)
 
         eval_results = {}
-        lvis_gt = self.lvis
+        lvis_gt = self.api
         for metric in metrics:
             msg = 'Evaluating {}...'.format(metric)
             if logger is None:
