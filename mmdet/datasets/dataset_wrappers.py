@@ -61,6 +61,22 @@ class RepeatDataset(object):
 # Modified from https://github.com/facebookresearch/detectron2/blob/41d475b75a230221e21d9cac5d69655e3415e3a4/detectron2/data/samplers/distributed_sampler.py#L57 # noqa
 @DATASETS.register_module
 class RepeatFactorDataset(object):
+    """A wrapper of repeated dataset with repeat factor.
+
+    Suitable for training on class imbalanced datasets like LVIS. In each
+    epoch, an image may appear multiple times based on its "repeat factor".
+    The repeat factor for an image is a function of the frequency the rarest
+    category labeled in that image. The "frequency of category c" in [0, 1]
+    is defined as the fraction of images in the training set (without repeats)
+    in which category c
+    appears.
+
+    See https://arxiv.org/abs/1908.03195 (>= v2) Appendix B.2.
+
+    Args:
+        dataset (:obj:`Dataset`): The dataset to be repeated.
+        repeat_thr (float): frequency threshold below which data is repeated.
+    """
 
     def __init__(self, dataset, repeat_thr):
         self.dataset = dataset
@@ -70,8 +86,7 @@ class RepeatFactorDataset(object):
         repeat_factors = self._get_repeat_factors(dataset, repeat_thr)
         repeat_indices = []
         for dataset_index, repeat_factor in enumerate(repeat_factors):
-            repeat_indices.extend([dataset_index] *
-                                  int(math.ceil(repeat_factor)))
+            repeat_indices.extend([dataset_index] * math.ceil(repeat_factor))
         self.repeat_indices = repeat_indices
 
         flags = []

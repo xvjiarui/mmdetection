@@ -11,19 +11,8 @@ from .wider_face import WIDERFaceDataset
 from .xml_style import XMLDataset
 
 __all__ = [
-    'CustomDataset',
-    'XMLDataset',
-    'CocoDataset',
-    'LvisDataset',
-    'VOCDataset',
-    'CityscapesDataset',
-    'GroupSampler',
-    'DistributedGroupSampler',
-    'build_dataloader',
-    'ConcatDataset',
-    'RepeatDataset',
-    'RepeatFactorDataset',
-    'WIDERFaceDataset',
-    'DATASETS',
-    'build_dataset',
+    'CustomDataset', 'XMLDataset', 'CocoDataset', 'LvisDataset', 'VOCDataset',
+    'CityscapesDataset', 'GroupSampler', 'DistributedGroupSampler',
+    'build_dataloader', 'ConcatDataset', 'RepeatDataset',
+    'RepeatFactorDataset', 'WIDERFaceDataset', 'DATASETS', 'build_dataset'
 ]

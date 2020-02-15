@@ -9,7 +9,7 @@ from pycocotools.cocoeval import COCOeval
 from mmdet.core import eval_recalls
 from mmdet.utils import print_log
 from .custom import CustomDataset
-from .dataset_api import API
+from .dataset_api import CocoAPI
 from .registry import DATASETS
 
 
@@ -32,7 +32,7 @@ class CocoDataset(CustomDataset):
                'vase', 'scissors', 'teddy_bear', 'hair_drier', 'toothbrush')
 
     def load_annotations(self, ann_file):
-        self.api = API(ann_file, 'COCO')
+        self.api = CocoAPI(ann_file, 'COCO')
         self.cat_ids = self.api.get_cat_ids()
         self.cat2label = {
             cat_id: i + 1

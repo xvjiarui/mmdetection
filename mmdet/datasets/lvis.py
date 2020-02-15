@@ -7,7 +7,7 @@ from lvis import LVISEval, LVISResults
 
 from mmdet.utils import print_log
 from .coco import CocoDataset
-from .dataset_api import API
+from .dataset_api import CocoAPI
 from .registry import DATASETS
 
 
@@ -15,7 +15,7 @@ from .registry import DATASETS
 class LvisDataset(CocoDataset):
 
     def load_annotations(self, ann_file):
-        self.api = API(ann_file, 'LVIS')
+        self.api = CocoAPI(ann_file, 'LVIS')
         self.cat_ids = self.api.get_cat_ids()
         self.cat2label = {
             cat_id: i + 1
@@ -77,6 +77,8 @@ class LvisDataset(CocoDataset):
         if jsonfile_prefix is None:
             tmp_dir = tempfile.TemporaryDirectory()
             jsonfile_prefix = osp.join(tmp_dir.name, 'results')
+        else:
+            tmp_dir = None
         result_files = self.results2json(results, jsonfile_prefix)
 
         eval_results = {}
@@ -140,6 +142,6 @@ class LvisDataset(CocoDataset):
                 ])
                 eval_results['{}_mAP_copypaste'.format(metric)] = ap_summary
             lvis_eval.print_results()
-        if jsonfile_prefix is None:
+        if tmp_dir is None:
             tmp_dir.cleanup()
         return eval_results

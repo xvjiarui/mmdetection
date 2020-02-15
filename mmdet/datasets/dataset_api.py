@@ -2,7 +2,7 @@ from lvis import LVIS
 from pycocotools.coco import COCO
 
 
-class API:
+class CocoAPI:
     """
     General API for COCO json style annotation
     """
