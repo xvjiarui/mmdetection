@@ -306,7 +306,8 @@ class CocoDataset(CustomDataset):
         result_files = self.results2json(results, jsonfile_prefix)
 
         eval_results = {}
-        cocoGt = self.api
+        # get original api
+        cocoGt = self.api.api
         for metric in metrics:
             msg = 'Evaluating {}...'.format(metric)
             if logger is None:
