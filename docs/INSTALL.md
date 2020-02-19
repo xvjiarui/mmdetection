@@ -85,8 +85,12 @@ mmdetection
 │   │   ├── test2017
 │   ├── cityscapes
 │   │   ├── annotations
-│   │   ├── train
-│   │   ├── val
+│   │   ├── leftImg8bit
+│   │   │   ├── train
+│   │   │   ├── val
+│   │   ├── gtFine
+│   │   │   ├── train
+│   │   │   ├── val
 │   ├── VOCdevkit
 │   │   ├── VOC2007
 │   │   ├── VOC2012
