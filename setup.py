@@ -249,6 +249,13 @@ if __name__ == '__main__':
                 name='compiling_info',
                 module='mmdet.ops.utils',
                 sources=['src/compiling_info.cpp']),
+            make_cuda_ext(
+                name='grid_sampler_cuda',
+                module='mmdet.ops.grid_sampler',
+                sources=[
+                    'src/cpu/grid_sampler_cpu.cpp',
+                    'src/cuda/grid_sampler_cuda.cu', 'src/grid_sampler.cpp'
+                ]),
             make_cython_ext(
                 name='soft_nms_cpu',
                 module='mmdet.ops.nms',

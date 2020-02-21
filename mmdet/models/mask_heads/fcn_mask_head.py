@@ -1,12 +1,11 @@
-import mmcv
 import numpy as np
 import pycocotools.mask as mask_util
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
 from mmdet.core import auto_fp16, force_fp32, mask_target
+from mmdet.ops import grid_sample
 from ..builder import build_loss
 from ..registry import HEADS
 from ..utils import ConvModule
@@ -173,16 +172,19 @@ class FCNMaskHead(nn.Module):
         # The actual implementation split the input into chunks,
         # and paste them chunk by chunk.
         if device.type == "cpu":
-            # CPU is most efficient when they are pasted one by one with skip_empty=True
+            # CPU is most efficient when they are pasted one by one
+            # with skip_empty=True,
             # so that it performs minimal number of operations.
             num_chunks = N
         else:
-            # GPU benefits from parallelism for larger chunks, but may have memory issue
+            # GPU benefits from parallelism for larger chunks,
+            # but may have memory issue
             num_chunks = int(
                 np.ceil(N * img_h * img_w * BYTES_PER_FLOAT / GPU_MEM_LIMIT))
             assert (
                 num_chunks <= N
-            ), "Default GPU_MEM_LIMIT in mask_ops.py is too small; try increasing it"
+            ), "Default GPU_MEM_LIMIT in mask_ops.py is too small. " \
+               "Try increasing it"
         chunks = torch.chunk(torch.arange(N, device=device), num_chunks)
 
         threshold = rcnn_test_cfg.mask_thr_binary
@@ -269,7 +271,7 @@ def _do_paste_mask(masks, boxes, img_h, img_w, skip_empty=True):
     gy = img_y[:, :, None].expand(N, img_y.size(1), img_x.size(1))
     grid = torch.stack([gx, gy], dim=3)
 
-    img_masks = F.grid_sample(
+    img_masks = grid_sample(
         masks.to(dtype=torch.float32), grid, align_corners=False)
 
     if skip_empty:
