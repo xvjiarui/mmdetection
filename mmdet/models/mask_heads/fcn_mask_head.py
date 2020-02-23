@@ -154,7 +154,7 @@ class FCNMaskHead(nn.Module):
 
         device = mask_pred.device
         cls_segms = [[] for _ in range(self.num_classes)
-                     ]  # BG is not included in num_classes 
+                     ]  # BG is not included in num_classes
         bboxes = det_bboxes[:, :4]
         labels = det_labels
 
@@ -165,30 +165,60 @@ class FCNMaskHead(nn.Module):
             img_w = np.round(ori_shape[1] * scale_factor).astype(np.int32)
             scale_factor = 1.0
 
-        for i in range(bboxes.shape[0]):
-            if not isinstance(scale_factor, (float, torch.Tensor)):
-                scale_factor = bboxes.new_tensor(scale_factor)
-            bbox = (bboxes[i:i + 1, :] / scale_factor)
+        if not isinstance(scale_factor, (float, torch.Tensor)):
+            scale_factor = bboxes.new_tensor(scale_factor)
+        bboxes = bboxes / scale_factor
 
-            label = labels[i]
-            if not self.class_agnostic:
-                mask_pred_ = mask_pred[i:i + 1, label:label + 1, :, :]
-            else:
-                mask_pred_ = mask_pred[i:i + 1, 0:1, :, :]
-            im_mask = torch.zeros((img_h, img_w), dtype=torch.uint8)
+        N = len(mask_pred)
+        # The actual implementation split the input into chunks,
+        # and paste them chunk by chunk.
+        if device.type == "cpu":
+            # CPU is most efficient when they are pasted one by one with skip_empty=True
+            # so that it performs minimal number of operations.
+            num_chunks = N
+        else:
+            # GPU benefits from parallelism for larger chunks, but may have memory issue
+            num_chunks = int(
+                np.ceil(N * img_h * img_w * BYTES_PER_FLOAT / GPU_MEM_LIMIT))
+            assert (
+                num_chunks <= N
+            ), "Default GPU_MEM_LIMIT in mask_ops.py is too small; try increasing it"
+        chunks = torch.chunk(torch.arange(N, device=device), num_chunks)
+
+        threshold = rcnn_test_cfg.mask_thr_binary
+        im_mask = torch.zeros(
+            N,
+            img_h,
+            img_w,
+            device=device,
+            dtype=torch.bool if threshold >= 0 else torch.uint8)
+
+        if not self.class_agnostic:
+            mask_pred = mask_pred[range(N), labels][:, None]
+
+        for inds in chunks:
             masks_chunk, spatial_inds = _do_paste_mask(
-                mask_pred_,
-                bbox,
+                mask_pred[inds],
+                bboxes[inds],
                 img_h,
                 img_w,
                 skip_empty=device.type == "cpu")
-            masks_chunk = (masks_chunk > rcnn_test_cfg.mask_thr_binary).to(
-                dtype=torch.bool)
-            im_mask[spatial_inds] = masks_chunk
 
+            if threshold >= 0:
+                masks_chunk = (masks_chunk >= threshold).to(dtype=torch.bool)
+            else:
+                # for visualization and debugging
+                masks_chunk = (masks_chunk * 255).to(dtype=torch.uint8)
+
+            im_mask[(inds, ) + spatial_inds] = masks_chunk
+
+        for i in range(N):
             rle = mask_util.encode(
-                np.array(im_mask[:, :, None].cpu().numpy(), order='F'))[0]
-            cls_segms[label].append(rle)
+                np.array(
+                    im_mask[i][:, :, None].cpu().numpy(),
+                    order='F',
+                    dtype='uint8'))[0]
+            cls_segms[labels[i]].append(rle)
 
         return cls_segms
 
