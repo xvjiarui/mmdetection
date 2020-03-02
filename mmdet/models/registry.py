@@ -3,6 +3,7 @@ from mmdet.utils import Registry
 BACKBONES = Registry('backbone')
 NECKS = Registry('neck')
 ROI_EXTRACTORS = Registry('roi_extractor')
+POINT_EXTRACTORS = Registry('point_extractor')
 SHARED_HEADS = Registry('shared_head')
 HEADS = Registry('head')
 LOSSES = Registry('loss')

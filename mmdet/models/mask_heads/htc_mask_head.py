@@ -32,8 +32,8 @@ class HTCMaskHead(FCNMaskHead):
         res_feat = x
         outs = []
         if return_logits:
-            x = self.upsample(x)
-            if self.upsample_method == 'deconv':
+            x = self.interpolate(x)
+            if self.interpolate_method == 'deconv':
                 x = self.relu(x)
             mask_pred = self.conv_logits(x)
             outs.append(mask_pred)

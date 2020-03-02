@@ -1,3 +1,4 @@
+from .convfc_mask_head import ConvFCMaskHead
 from .fcn_mask_head import FCNMaskHead
 from .fused_semantic_head import FusedSemanticHead
 from .grid_head import GridHead
@@ -6,5 +7,5 @@ from .maskiou_head import MaskIoUHead
 
 __all__ = [
     'FCNMaskHead', 'HTCMaskHead', 'FusedSemanticHead', 'GridHead',
-    'MaskIoUHead'
+    'MaskIoUHead', 'ConvFCMaskHead'
 ]

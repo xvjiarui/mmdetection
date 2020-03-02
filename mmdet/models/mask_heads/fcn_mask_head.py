@@ -9,7 +9,7 @@ from mmdet.core import auto_fp16, force_fp32, mask_target
 from mmdet.ops.carafe import CARAFEPack
 from ..builder import build_loss
 from ..registry import HEADS
-from ..utils import ConvModule, build_upsample_layer
+from ..utils import ConvModule, build_interpolate_layer
 
 
 @HEADS.register_module
@@ -23,28 +23,28 @@ class FCNMaskHead(nn.Module):
                  conv_out_channels=256,
                  num_classes=81,
                  class_agnostic=False,
-                 upsample_cfg=dict(type='deconv', scale_factor=2),
+                 interpolate_cfg=dict(type='deconv', scale_factor=2),
                  conv_cfg=None,
                  norm_cfg=None,
                  loss_mask=dict(
                      type='CrossEntropyLoss', use_mask=True, loss_weight=1.0)):
         super(FCNMaskHead, self).__init__()
-        self.upsample_cfg = upsample_cfg.copy()
-        if self.upsample_cfg['type'] not in [
-                None, 'deconv', 'nearest', 'bilinear', 'carafe'
+        self.interpolate_cfg = interpolate_cfg.copy()
+        if self.interpolate_cfg['type'] not in [
+                None, 'conv', 'deconv', 'nearest', 'bilinear', 'carafe'
         ]:
             raise ValueError(
                 'Invalid upsample method {}, accepted methods '
                 'are "deconv", "nearest", "bilinear", "carafe"'.format(
-                    self.upsample_cfg['type']))
+                    self.interpolate_cfg['type']))
         self.num_convs = num_convs
         # WARN: roi_feat_size is reserved and not used
         self.roi_feat_size = _pair(roi_feat_size)
         self.in_channels = in_channels
         self.conv_kernel_size = conv_kernel_size
         self.conv_out_channels = conv_out_channels
-        self.upsample_method = self.upsample_cfg.get('type')
-        self.scale_factor = self.upsample_cfg.pop('scale_factor')
+        self.interpolate_method = self.interpolate_cfg.get('type')
+        self.scale_factor = self.interpolate_cfg.pop('scale_factor')
         self.num_classes = num_classes
         self.class_agnostic = class_agnostic
         self.conv_cfg = conv_cfg
@@ -65,40 +65,48 @@ class FCNMaskHead(nn.Module):
                     padding=padding,
                     conv_cfg=conv_cfg,
                     norm_cfg=norm_cfg))
-        upsample_in_channels = (
+        interpolate_in_channels = (
             self.conv_out_channels if self.num_convs > 0 else in_channels)
-        upsample_cfg_ = self.upsample_cfg.copy()
-        if self.upsample_method is None:
-            self.upsample = None
-        elif self.upsample_method == 'deconv':
-            upsample_cfg_.update(
-                in_channels=upsample_in_channels,
+        interpolate_cfg_ = self.interpolate_cfg.copy()
+        if self.interpolate_method is None:
+            self.interpolate = None
+        elif self.interpolate_method == 'conv':
+            assert 0 < self.scale_factor < 1.0
+            interpolate_cfg_.update(
+                in_channels=interpolate_in_channels,
+                out_channels=self.conv_out_channels,
+                kernel_size=int(1 / self.scale_factor),
+                stride=int(1 / self.scale_factor))
+        elif self.interpolate_method == 'deconv':
+            interpolate_cfg_.update(
+                in_channels=interpolate_in_channels,
                 out_channels=self.conv_out_channels,
                 kernel_size=self.scale_factor,
                 stride=self.scale_factor)
-        elif self.upsample_method == 'carafe':
-            upsample_cfg_.update(
-                channels=upsample_in_channels, scale_factor=self.scale_factor)
+        elif self.interpolate_method == 'carafe':
+            interpolate_cfg_.update(
+                channels=interpolate_in_channels,
+                scale_factor=self.scale_factor)
         else:
             # suppress warnings
-            align_corners = (None
-                             if self.upsample_method == 'nearest' else False)
-            upsample_cfg_.update(
+            align_corners = (None if self.interpolate_method == 'nearest' else
+                             False)
+            interpolate_cfg_.update(
                 scale_factor=self.scale_factor,
-                mode=self.upsample_method,
+                mode=self.interpolate_method,
                 align_corners=align_corners)
-        self.upsample = build_upsample_layer(upsample_cfg_)
+        self.interpolate = build_interpolate_layer(interpolate_cfg_)
 
         out_channels = 1 if self.class_agnostic else self.num_classes
         logits_in_channel = (
             self.conv_out_channels
-            if self.upsample_method == 'deconv' else upsample_in_channels)
+            if 'conv' in self.interpolate_method else interpolate_in_channels)
         self.conv_logits = nn.Conv2d(logits_in_channel, out_channels, 1)
         self.relu = nn.ReLU(inplace=True)
         self.debug_imgs = None
 
     def init_weights(self):
-        for m in [self.upsample, self.conv_logits]:
+        for m in [self.interpolate, self.conv_logits]:
             if m is None:
                 continue
             elif isinstance(m, CARAFEPack):
@@ -112,9 +120,9 @@ class FCNMaskHead(nn.Module):
     def forward(self, x):
         for conv in self.convs:
             x = conv(x)
-        if self.upsample is not None:
-            x = self.upsample(x)
-            if self.upsample_method == 'deconv':
+        if self.interpolate is not None:
+            x = self.interpolate(x)
+            if 'conv' in self.interpolate_method:
                 x = self.relu(x)
         mask_pred = self.conv_logits(x)
         return mask_pred
