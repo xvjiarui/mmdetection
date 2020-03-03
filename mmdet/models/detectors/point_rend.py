@@ -230,8 +230,7 @@ class PointRend(TwoStageDetector):
                 point_coords)
             coarse_feats = point_sample(
                 mask_pred, point_coords, align_corners=False)
-            point_logits = self.mask_point_head(fine_grained_feats,
-                                                coarse_feats)
+            point_logits = self.point_head(fine_grained_feats, coarse_feats)
 
             R, C, H, W = refined_mask_pred.shape
             point_indices = point_indices.unsqueeze(1).expand(-1, C, -1)

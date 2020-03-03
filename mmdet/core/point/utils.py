@@ -96,9 +96,9 @@ def point_sample(input, point_coords, scale_factor=None, **kwargs):
         add_dim = True
         point_coords = point_coords.unsqueeze(2)
     if scale_factor is not None:
-        scale = torch.tensor(
-            input.shape[-2:], dtype=torch.float,
-            device=input.device) * scale_factor
+        h, w = input.shape[-2:]
+        scale = torch.tensor([w, h], dtype=torch.float,
+                             device=input.device) * scale_factor
         scale = scale.view(1, 1, 1, 2)
         point_coords = point_coords / scale
     output = grid_sample(input, denormalize(point_coords), **kwargs)
