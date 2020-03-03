@@ -14,7 +14,7 @@ def denormalize(grid):
     """
     convert from range [0, 1] to [-1, 1]
     """
-    return grid * 2.0 - 1
+    return grid * 2.0 - 1.0
 
 
 def generate_grid(num_grid, size, device):
@@ -42,11 +42,11 @@ def roi_point2img_coord(rois, roi_points):
         assert roi_points.size(0) == rois.size(0)
         img_coords = roi_points.clone()
         img_coords[:, :, 0] = img_coords[:, :, 0] * (
-            rois[:, None, 2] - rois[:, None, 0])
-        img_coords[:, :, 1] = img_coords[:, :, 1] * (
             rois[:, None, 3] - rois[:, None, 1])
-        img_coords[:, :, 0] += rois[:, None, 0]
-        img_coords[:, :, 1] += rois[:, None, 1]
+        img_coords[:, :, 1] = img_coords[:, :, 1] * (
+            rois[:, None, 4] - rois[:, None, 2])
+        img_coords[:, :, 0] += rois[:, None, 1]
+        img_coords[:, :, 1] += rois[:, None, 2]
     return img_coords
 
 
