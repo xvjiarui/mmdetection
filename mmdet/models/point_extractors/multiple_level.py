@@ -1,8 +1,16 @@
-import torch
 import torch.nn as nn
 
 from mmdet.core import force_fp32, point_sample, roi_point2img_coord
 from ..registry import POINT_EXTRACTORS
+
+
+def extract_point_feats(feats, rois, points, scale_factor=None):
+    coords = roi_point2img_coord(rois, points)
+    point_feats_t = point_sample(
+        feats, coords, scale_factor=scale_factor,
+        align_corners=False).transpose(0, 1)
+
+    return point_feats_t
 
 
 @POINT_EXTRACTORS.register_module
@@ -49,18 +57,25 @@ class MultiplePointExtractor(nn.Module):
         for batch_ind in range(batch_size):
             offset = 0
             for i in range(num_levels):
-                height, width = feats[i].shape[-2:]
-                scale = torch.tensor(
-                    [width, height],
-                    device=feats[i].device) * self.featmap_strides[i]
+                # height, width = feats[i].shape[-2:]
+                # scale = torch.tensor([width, height],
+                # dtype=torch.float, device=feats[i].device) *
+                # self.featmap_strides[i]
+                # scale = scale.view(1, 1, 2)
                 roi_inds = rois[:, 0] == batch_ind
                 if roi_inds.any():
-                    coords = roi_point2img_coord(rois[roi_inds],
-                                                 points[roi_inds])
-                    grid = coords / scale
-                    point_feats_t = point_sample(
-                        feats[i][batch_ind], grid,
-                        align_corners=False).transpose(0, 1)
+                    point_feats_t = extract_point_feats(
+                        feats[i][batch_ind],
+                        rois[roi_inds],
+                        points[roi_inds],
+                        scale_factor=float(self.featmap_strides[i]))
+                    # coords = roi_point2img_coord(rois[roi_inds],
+                    #                              points[roi_inds])
+                    # # grid = coords / scale
+                    # point_feats_t = point_sample(feats[i][batch_ind], coords,
+                    #                              scale_factor=self.featmap_strides[i],
+                    #                              align_corners=False).transpose(
+                    #     0, 1)
                     point_feats[roi_inds, offset:offset +
                                 point_feats_t.size(1)] = point_feats_t
                     offset += point_feats_t.size(1)

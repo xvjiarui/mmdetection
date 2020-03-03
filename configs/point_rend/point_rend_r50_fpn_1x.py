@@ -127,7 +127,8 @@ test_cfg = dict(
         nms=dict(type='nms', iou_thr=0.5),
         max_per_img=100,
         mask_thr_binary=0.5),
-    point=dict(subdivision_steps=5, subdivision_num_points=28 * 28))
+    point=dict(
+        subdivision_steps=5, subdivision_num_points=28 * 28, scale_factor=2))
 # dataset settings
 dataset_type = 'CocoDataset'
 data_root = 'data/coco/'

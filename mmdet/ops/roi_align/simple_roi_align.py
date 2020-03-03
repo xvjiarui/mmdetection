@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 from torch.nn.modules.utils import _pair
 
@@ -16,13 +15,17 @@ class SimpleRoIAlign(nn.Module):
         channels = feature.size(0)
         from mmdet.core import roi2point, point_sample
         point_coord = roi2point(rois, self.out_size)
-        height, width = feature.shape[-2:]
-        scale = torch.tensor([width, height],
-                             device=feature.device) / self.spatial_scale
-        grid = point_coord / scale
-        output = point_sample(feature, grid, align_corners=False)
-        output = output.transpose(0, 1).reshape(num_rois, channels,
-                                                *self.out_size)
+        # height, width = feature.shape[-2:]
+        # scale = torch.tensor([width, height], dtype=torch.float,
+        #                      device=feature.device) / self.spatial_scale
+        # scale = scale.view(1, 1, 2)
+        # grid = point_coord / scale
+        output = point_sample(
+            feature,
+            point_coord,
+            scale_factor=1. / self.spatial_scale,
+            align_corners=False).transpose(0, 1)
+        output = output.reshape(num_rois, channels, *self.out_size)
 
         return output
 

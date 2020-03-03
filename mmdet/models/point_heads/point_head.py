@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from mmdet.core import point_target
+from mmdet.core import point_sample
 from ..builder import build_loss
 from ..registry import HEADS
 
@@ -69,8 +69,10 @@ class SharedFCPointHead(nn.Module):
         return self.fc_logits(x)
 
     def get_target(self, sampling_point_coords, mask_targets, rcnn_train_cfg):
-        point_targets = point_target(sampling_point_coords, mask_targets,
-                                     rcnn_train_cfg)
+        point_targets = point_sample(
+            mask_targets.to(torch.float32).unsqueeze(1),
+            sampling_point_coords,
+            align_corners=False).squeeze(1)
         return point_targets
 
     def loss(self, point_pred, point_targets, labels):
