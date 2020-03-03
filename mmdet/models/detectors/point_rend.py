@@ -197,8 +197,9 @@ class PointRend(TwoStageDetector):
             coarse_feats = point_sample(
                 mask_pred, point_coords, align_corners=False)
             point_pred = self.point_head(fine_grained_feats, coarse_feats)
-            point_targets = self.point_head.get_target(point_coords,
-                                                       mask_targets,
+            point_targets = self.point_head.get_target(point_coords, pos_rois,
+                                                       sampling_results,
+                                                       gt_masks,
                                                        self.train_cfg.point)
             loss_point = self.point_head.loss(point_pred, point_targets,
                                               pos_labels)

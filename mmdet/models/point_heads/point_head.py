@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from mmdet.core import point_sample
+from mmdet.core import mask_point_target
 from ..builder import build_loss
 from ..registry import HEADS
 
@@ -68,12 +68,24 @@ class SharedFCPointHead(nn.Module):
                 x = torch.cat((x, coarse_features), dim=1)
         return self.fc_logits(x)
 
-    def get_target(self, sampling_point_coords, mask_targets, rcnn_train_cfg):
-        point_targets = point_sample(
-            mask_targets.to(torch.float32).unsqueeze(1),
-            sampling_point_coords,
-            align_corners=False).squeeze(1)
-        return point_targets
+    def get_target(self, point_coords, rois, sampling_results, gt_masks,
+                   point_train_cfg):
+        point_coords_list = []
+        rois_list = []
+        batch_size = len(gt_masks)
+        for ind in range(batch_size):
+            roi_inds = rois[:, 0] == ind
+            point_coords_list.append(point_coords[roi_inds])
+            rois_list.append(rois[roi_inds])
+        pos_assigned_gt_inds = [
+            res.pos_assigned_gt_inds for res in sampling_results
+        ]
+
+        mask_point_targets = mask_point_target(point_coords_list, rois_list,
+                                               pos_assigned_gt_inds, gt_masks,
+                                               point_train_cfg)
+
+        return mask_point_targets
 
     def loss(self, point_pred, point_targets, labels):
         loss = dict()
