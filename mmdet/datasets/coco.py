@@ -122,8 +122,8 @@ class CocoDataset(CustomDataset):
         return [
             _bbox[0],
             _bbox[1],
-            _bbox[2] - _bbox[0] + 1,
-            _bbox[3] - _bbox[1] + 1,
+            _bbox[2] - _bbox[0],
+            _bbox[3] - _bbox[1],
         ]
 
     def _proposal2json(self, results):
