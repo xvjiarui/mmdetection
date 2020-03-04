@@ -41,38 +41,71 @@ class PixelShufflePack(nn.Module):
         return x
 
 
-upsample_cfg = {
+class Interpolate(nn.Module):
+    """A wrapper of F.interpolate.
+
+    """
+
+    def __init__(self,
+                 size=None,
+                 scale_factor=None,
+                 mode='nearest',
+                 align_corners=None):
+        super(Interpolate, self).__init__()
+        self.size = size
+        if isinstance(scale_factor, tuple):
+            self.scale_factor = tuple(float(factor) for factor in scale_factor)
+        else:
+            self.scale_factor = float(scale_factor) if scale_factor else None
+        self.mode = mode
+        self.align_corners = align_corners
+
+    def forward(self, input):
+        return F.interpolate(input, self.size, self.scale_factor, self.mode,
+                             self.align_corners)
+
+    def extra_repr(self):
+        if self.scale_factor is not None:
+            info = 'scale_factor=' + str(self.scale_factor)
+        else:
+            info = 'size=' + str(self.size)
+        info += ', mode=' + self.mode
+        return info
+
+
+interpolate_cfg = {
     # format: layer_type: (abbreviation, module)
-    'nearest': nn.Upsample,
-    'bilinear': nn.Upsample,
+    'nearest': Interpolate,
+    'bilinear': Interpolate,
     'deconv': nn.ConvTranspose2d,
+    'conv': nn.Conv2d,
     'pixel_shuffle': PixelShufflePack,
     'carafe': CARAFEPack
 }
 
 
-def build_upsample_layer(cfg):
-    """ Build upsample layer
+def build_interpolate_layer(cfg):
+    """ Build interpolate layer
 
     Args:
         cfg (dict): cfg should contain:
-            type (str): Identify upsample layer type.
-            upsample ratio (int): Upsample ratio
-            layer args: args needed to instantiate a upsample layer.
+            type (str): Identify interpolate layer type.
+            interpolate ratio (int): Interpolate ratio
+            layer args: args needed to instantiate a interpolate layer.
 
     Returns:
-        layer (nn.Module): Created upsample layer
+        layer (nn.Module): Created interpolate layer
     """
     assert isinstance(cfg, dict) and 'type' in cfg
     cfg_ = cfg.copy()
 
     layer_type = cfg_.pop('type')
-    if layer_type not in upsample_cfg:
-        raise KeyError('Unrecognized upsample type {}'.format(layer_type))
+    if layer_type not in interpolate_cfg:
+        raise KeyError('Unrecognized interpolate type {}'.format(layer_type))
     else:
-        upsample = upsample_cfg[layer_type]
-        if upsample is None:
+        interpolate = interpolate_cfg[layer_type]
+        if interpolate is None:
             raise NotImplementedError
 
-    layer = upsample(**cfg_)
+    layer = interpolate(**cfg_)
     return layer

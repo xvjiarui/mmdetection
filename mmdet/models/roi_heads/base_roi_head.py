@@ -78,7 +78,7 @@ class BaseRoIHead(nn.Module, BBoxTestMixin, MaskTestMixin):
         rois = bbox2roi([proposals])
         if self.with_bbox:
             bbox_feats = self.bbox_roi_extractor(
-                x[:self.bbox_roi_extractor.num_inputs], rois)
+                [x[i] for i in self.bbox_roi_extractor.in_indices], rois)
             if self.with_shared_head:
                 bbox_feats = self.shared_head(bbox_feats)
             cls_score, bbox_pred = self.bbox_head(bbox_feats)
@@ -87,7 +87,7 @@ class BaseRoIHead(nn.Module, BBoxTestMixin, MaskTestMixin):
         if self.with_mask:
             mask_rois = rois[:100]
             mask_feats = self.mask_roi_extractor(
-                x[:self.mask_roi_extractor.num_inputs], mask_rois)
+                [x[i] for i in self.mask_roi_extractor.in_indices], mask_rois)
             if self.with_shared_head:
                 mask_feats = self.shared_head(mask_feats)
             mask_pred = self.mask_head(mask_feats)
@@ -168,7 +168,7 @@ class BaseRoIHead(nn.Module, BBoxTestMixin, MaskTestMixin):
         rois = bbox2roi([res.bboxes for res in sampling_results])
         # TODO: a more flexible way to decide which feature maps to use
         bbox_feats = self.bbox_roi_extractor(
-            x[:self.bbox_roi_extractor.num_inputs], rois)
+            [x[i] for i in self.bbox_roi_extractor.in_indices], rois)
         if self.with_shared_head:
             bbox_feats = self.shared_head(bbox_feats)
         cls_score, bbox_pred = self.bbox_head(bbox_feats)
@@ -198,7 +198,7 @@ class BaseRoIHead(nn.Module, BBoxTestMixin, MaskTestMixin):
         if not self.share_roi_extractor:
             pos_rois = bbox2roi([res.pos_bboxes for res in sampling_results])
             mask_feats = self.mask_roi_extractor(
-                x[:self.mask_roi_extractor.num_inputs], pos_rois)
+                [x[i] for i in self.mask_roi_extractor.in_indices], pos_rois)
             if self.with_shared_head:
                 mask_feats = self.shared_head(mask_feats)
         else:
@@ -226,7 +226,7 @@ class BaseRoIHead(nn.Module, BBoxTestMixin, MaskTestMixin):
                                 proposals=None,
                                 rescale=False):
         """Async test without augmentation."""
-        assert self.with_bbox, "Bbox head must be implemented."
+        assert self.with_bbox, 'Bbox head must be implemented.'
 
         det_bboxes, det_labels = await self.async_test_bboxes(
             x, img_meta, proposal_list, self.test_cfg, rescale=rescale)
@@ -252,7 +252,7 @@ class BaseRoIHead(nn.Module, BBoxTestMixin, MaskTestMixin):
                     proposals=None,
                     rescale=False):
         """Test without augmentation."""
-        assert self.with_bbox, "Bbox head must be implemented."
+        assert self.with_bbox, 'Bbox head must be implemented.'
 
         det_bboxes, det_labels = self.simple_test_bboxes(
             x, img_meta, proposal_list, self.test_cfg, rescale=rescale)

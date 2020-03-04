@@ -2,7 +2,7 @@ from torch import nn
 
 from mmdet.utils import build_from_cfg
 from .registry import (BACKBONES, DETECTORS, HEADS, LOSSES, NECKS,
-                       ROI_EXTRACTORS, SHARED_HEADS)
+                       POINT_EXTRACTORS, ROI_EXTRACTORS, SHARED_HEADS)
 
 
 def build(cfg, registry, default_args=None):
@@ -25,6 +25,10 @@ def build_neck(cfg):
 
 def build_roi_extractor(cfg):
     return build(cfg, ROI_EXTRACTORS)
+
+
+def build_point_extractor(cfg):
+    return build(cfg, POINT_EXTRACTORS)
 
 
 def build_shared_head(cfg):

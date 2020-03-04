@@ -7,6 +7,8 @@ from .detectors import *  # noqa: F401,F403
 from .losses import *  # noqa: F401,F403
 from .mask_heads import *  # noqa: F401,F403
 from .necks import *  # noqa: F401,F403
+from .point_extractors import *  # noqa: F401,F403
+from .point_heads import *  # noqa: F401,F403
 from .registry import (BACKBONES, DETECTORS, HEADS, LOSSES, NECKS,
                        ROI_EXTRACTORS, SHARED_HEADS)
 from .roi_extractors import *  # noqa: F401,F403
