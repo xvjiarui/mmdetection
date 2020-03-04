@@ -104,4 +104,8 @@ class SingleRoIExtractor(nn.Module):
                 rois_ = rois[inds, :]
                 roi_feats_t = self.roi_layers[i](feats[i], rois_)
                 roi_feats[inds] = roi_feats_t
+            else:
+                # TODO: a better way to clear unused parameters
+                roi_feats += sum(
+                    [p.sum() for p in self.roi_layers[i].parameters()]) * 0
         return roi_feats
