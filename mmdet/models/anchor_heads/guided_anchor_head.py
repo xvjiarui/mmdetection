@@ -244,7 +244,6 @@ class GuidedAnchorHead(AnchorHead):
             multi_level_approxs = approxs_list[img_id]
             for i in range(num_levels):
                 approxs = multi_level_approxs[i]
-                h, w, _ = img_meta['pad_shape']
                 inside_flags_list = []
                 for i in range(self.approxs_per_octave):
                     split_approxs = approxs[i::self.approxs_per_octave, :]

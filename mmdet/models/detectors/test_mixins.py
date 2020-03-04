@@ -1,12 +1,6 @@
-import logging
 import sys
 
-import torch
-
-from mmdet.core import (bbox2roi, bbox_mapping,
-                        merge_aug_proposals, multiclass_nms)
-
-logger = logging.getLogger(__name__)
+from mmdet.core import merge_aug_proposals
 
 if sys.version_info >= (3, 7):
     from mmdet.utils.contextmanagers import completed
@@ -17,9 +11,9 @@ class RPNTestMixin(object):
     if sys.version_info >= (3, 7):
 
         async def async_test_rpn(self, x, img_meta, rpn_test_cfg):
-            sleep_interval = rpn_test_cfg.pop("async_sleep_interval", 0.025)
+            sleep_interval = rpn_test_cfg.pop('async_sleep_interval', 0.025)
             async with completed(
-                    __name__, "rpn_head_forward",
+                    __name__, 'rpn_head_forward',
                     sleep_interval=sleep_interval):
                 rpn_outs = self.rpn_head(x)
 

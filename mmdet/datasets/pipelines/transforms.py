@@ -162,7 +162,7 @@ class Resize(object):
                     mmcv.imresize(mask, mask_size, interpolation='nearest')
                     for mask in results[key]
                 ]
-            results[key] = masks
+            results[key] = np.stack(masks)
 
     def _resize_poly_masks(self, results):
         for key in results.get('mask_fields', []):
@@ -309,10 +309,10 @@ class RandomFlip(object):
                         results['flip_direction'])
             else:
                 for key in results.get('mask_fields', []):
-                    results[key] = [
+                    results[key] = np.stack([
                         mmcv.imflip(mask, direction=results['flip_direction'])
                         for mask in results[key]
-                    ]
+                    ])
 
             # flip segs
             for key in results.get('seg_fields', []):
@@ -348,7 +348,7 @@ class Pad(object):
 
     def _pad_img(self, results):
         if self.size is not None:
-            padded_img = mmcv.impad(results['img'], self.size)
+            padded_img = mmcv.impad(results['img'], self.size, self.pad_val)
         elif self.size_divisor is not None:
             padded_img = mmcv.impad_to_multiple(
                 results['img'], self.size_divisor, pad_val=self.pad_val)
@@ -476,7 +476,7 @@ class RandomCrop(object):
                     gt_mask = results['gt_masks'][i][crop_y1:crop_y2,
                                                      crop_x1:crop_x2]
                     valid_gt_masks.append(gt_mask)
-                results['gt_masks'] = valid_gt_masks
+                results['gt_masks'] = np.stack(valid_gt_masks)
 
         return results
 
@@ -652,7 +652,7 @@ class Expand(object):
                                       0).astype(mask.dtype)
                 expand_mask[top:top + h, left:left + w] = mask
                 expand_gt_masks.append(expand_mask)
-            results['gt_masks'] = expand_gt_masks
+            results['gt_masks'] = np.stack(expand_gt_masks)
 
         # not tested
         if 'gt_semantic_seg' in results:
@@ -744,10 +744,10 @@ class MinIoURandomCrop(object):
                         results['gt_masks'][i] for i in range(len(mask))
                         if mask[i]
                     ]
-                    results['gt_masks'] = [
+                    results['gt_masks'] = np.stack([
                         gt_mask[patch[1]:patch[3], patch[0]:patch[2]]
                         for gt_mask in valid_masks
-                    ]
+                    ])
 
                 # not tested
                 if 'gt_semantic_seg' in results:
@@ -845,10 +845,10 @@ class Albu(object):
         Returns:
             obj: The constructed object.
         """
-        assert isinstance(cfg, dict) and "type" in cfg
+        assert isinstance(cfg, dict) and 'type' in cfg
         args = cfg.copy()
 
-        obj_type = args.pop("type")
+        obj_type = args.pop('type')
         if mmcv.is_str(obj_type):
             if albumentations is None:
                 raise RuntimeError('albumentations is not installed')
@@ -904,6 +904,7 @@ class Albu(object):
             if isinstance(results['bboxes'], list):
                 results['bboxes'] = np.array(
                     results['bboxes'], dtype=np.float32)
+            results['bboxes'] = results['bboxes'].reshape(-1, 4)
 
             # filter label_fields
             if self.filter_lost_elements:
@@ -924,6 +925,7 @@ class Albu(object):
         if 'gt_labels' in results:
             if isinstance(results['gt_labels'], list):
                 results['gt_labels'] = np.array(results['gt_labels'])
+            results['gt_labels'] = results['gt_labels'].astype(np.int64)
 
         # back to the original format
         results = self.mapper(results, self.keymap_back)

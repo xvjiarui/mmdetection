@@ -1,15 +1,15 @@
-import mmcv
 import numpy as np
 import pycocotools.mask as mask_util
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 
 from mmdet.core import auto_fp16, force_fp32, mask_target
+from mmdet.ops.carafe import CARAFEPack
+from mmdet.ops.grid_sampler import grid_sample
 from ..builder import build_loss
 from ..registry import HEADS
-from ..utils import ConvModule
+from ..utils import ConvModule, build_upsample_layer
 
 BYTES_PER_FLOAT = 4
 # TODO: This memory limit may be too much or too little. It would be better to
@@ -27,27 +27,30 @@ class FCNMaskHead(nn.Module):
         in_channels=256,
         conv_kernel_size=3,
         conv_out_channels=256,
-        upsample_method='deconv',
-        upsample_ratio=2,
         num_classes=80,  # do not count BG anymore
         class_agnostic=False,
+        upsample_cfg=dict(type='deconv', scale_factor=2),
         conv_cfg=None,
         norm_cfg=None,
         loss_mask=dict(
             type='CrossEntropyLoss', use_mask=True, loss_weight=1.0)):
         super(FCNMaskHead, self).__init__()
-        if upsample_method not in [None, 'deconv', 'nearest', 'bilinear']:
+        self.upsample_cfg = upsample_cfg.copy()
+        if self.upsample_cfg['type'] not in [
+                None, 'deconv', 'nearest', 'bilinear', 'carafe'
+        ]:
             raise ValueError(
                 'Invalid upsample method {}, accepted methods '
-                'are "deconv", "nearest", "bilinear"'.format(upsample_method))
+                'are "deconv", "nearest", "bilinear", "carafe"'.format(
+                    self.upsample_cfg['type']))
         self.num_convs = num_convs
         # WARN: roi_feat_size is reserved and not used
         self.roi_feat_size = _pair(roi_feat_size)
         self.in_channels = in_channels
         self.conv_kernel_size = conv_kernel_size
         self.conv_out_channels = conv_out_channels
-        self.upsample_method = upsample_method
-        self.upsample_ratio = upsample_ratio
+        self.upsample_method = self.upsample_cfg.get('type')
+        self.scale_factor = self.upsample_cfg.pop('scale_factor')
         self.num_classes = num_classes
         self.class_agnostic = class_agnostic
         self.conv_cfg = conv_cfg
@@ -70,17 +73,27 @@ class FCNMaskHead(nn.Module):
                     norm_cfg=norm_cfg))
         upsample_in_channels = (
             self.conv_out_channels if self.num_convs > 0 else in_channels)
+        upsample_cfg_ = self.upsample_cfg.copy()
         if self.upsample_method is None:
             self.upsample = None
         elif self.upsample_method == 'deconv':
-            self.upsample = nn.ConvTranspose2d(
-                upsample_in_channels,
-                self.conv_out_channels,
-                self.upsample_ratio,
-                stride=self.upsample_ratio)
+            upsample_cfg_.update(
+                in_channels=upsample_in_channels,
+                out_channels=self.conv_out_channels,
+                kernel_size=self.scale_factor,
+                stride=self.scale_factor)
+        elif self.upsample_method == 'carafe':
+            upsample_cfg_.update(
+                channels=upsample_in_channels, scale_factor=self.scale_factor)
         else:
-            self.upsample = nn.Upsample(
-                scale_factor=self.upsample_ratio, mode=self.upsample_method)
+            # suppress warnings
+            align_corners = (None
+                             if self.upsample_method == 'nearest' else False)
+            upsample_cfg_.update(
+                scale_factor=self.scale_factor,
+                mode=self.upsample_method,
+                align_corners=align_corners)
+        self.upsample = build_upsample_layer(upsample_cfg_)
 
         out_channels = 1 if self.class_agnostic else self.num_classes
         logits_in_channel = (
@@ -94,9 +107,12 @@ class FCNMaskHead(nn.Module):
         for m in [self.upsample, self.conv_logits]:
             if m is None:
                 continue
-            nn.init.kaiming_normal_(
-                m.weight, mode='fan_out', nonlinearity='relu')
-            nn.init.constant_(m.bias, 0)
+            elif isinstance(m, CARAFEPack):
+                m.init_weights()
+            else:
+                nn.init.kaiming_normal_(
+                    m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.constant_(m.bias, 0)
 
     @auto_fp16()
     def forward(self, x):
@@ -172,17 +188,19 @@ class FCNMaskHead(nn.Module):
         N = len(mask_pred)
         # The actual implementation split the input into chunks,
         # and paste them chunk by chunk.
-        if device.type == "cpu":
-            # CPU is most efficient when they are pasted one by one with skip_empty=True
-            # so that it performs minimal number of operations.
+        if device.type == 'cpu':
+            # CPU is most efficient when they are pasted one by one with skip_
+            # empty=True so that it performs minimal number of operations.
             num_chunks = N
         else:
-            # GPU benefits from parallelism for larger chunks, but may have memory issue
+            # GPU benefits from parallelism for larger chunks, but may have
+            # memory issue
             num_chunks = int(
                 np.ceil(N * img_h * img_w * BYTES_PER_FLOAT / GPU_MEM_LIMIT))
             assert (
                 num_chunks <= N
-            ), "Default GPU_MEM_LIMIT in mask_ops.py is too small; try increasing it"
+            ), 'Default GPU_MEM_LIMIT in mask_ops.py is too small; try ' \
+               'increasing it'
         chunks = torch.chunk(torch.arange(N, device=device), num_chunks)
 
         threshold = rcnn_test_cfg.mask_thr_binary
@@ -202,7 +220,7 @@ class FCNMaskHead(nn.Module):
                 bboxes[inds],
                 img_h,
                 img_w,
-                skip_empty=device.type == "cpu")
+                skip_empty=device.type == 'cpu')
 
             if threshold >= 0:
                 masks_chunk = (masks_chunk >= threshold).to(dtype=torch.bool)
@@ -269,7 +287,7 @@ def _do_paste_mask(masks, boxes, img_h, img_w, skip_empty=True):
     gy = img_y[:, :, None].expand(N, img_y.size(1), img_x.size(1))
     grid = torch.stack([gx, gy], dim=3)
 
-    img_masks = F.grid_sample(
+    img_masks = grid_sample(
         masks.to(dtype=torch.float32), grid, align_corners=False)
 
     if skip_empty:
