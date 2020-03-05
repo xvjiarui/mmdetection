@@ -63,9 +63,7 @@ data_root = 'data/coco/'
 # When using pre-trained models in Detectron1 or any MSRA models,
 # std has been absorbed into its conv1 weights, so the std needs to be set 1.
 img_norm_cfg = dict(
-    mean=[103.530, 116.280, 123.675],
-    std=[1.0, 1.0, 1.0],
-    to_rgb=False)
+    mean=[103.530, 116.280, 123.675], std=[1.0, 1.0, 1.0], to_rgb=False)
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True),
@@ -73,7 +71,7 @@ train_pipeline = [
         type='Resize',
         img_scale=[(1333, 640), (1333, 672), (1333, 704), (1333, 736),
                    (1333, 768), (1333, 800)],
-        multiscale_mode="value",
+        multiscale_mode='value',
         keep_ratio=True),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(type='Normalize', **img_norm_cfg),
@@ -114,6 +112,7 @@ data = dict(
         ann_file=data_root + 'annotations/instances_val2017.json',
         img_prefix=data_root + 'val2017/',
         pipeline=test_pipeline))
+evaluation = dict(interval=1, metric=['bbox'])
 # optimizer
 optimizer = dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.0001)
 optimizer_config = dict(grad_clip=None)
