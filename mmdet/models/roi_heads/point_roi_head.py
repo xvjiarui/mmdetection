@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 
 from mmdet.core import (bbox2roi, get_uncertain_point_coords,
-                        get_uncertain_point_coords_with_randomness)
+                        get_uncertain_point_coords_with_randomness, roi2poi)
 from mmdet.ops.point_sample import point_sample
 from .. import builder
 from ..registry import HEADS
@@ -115,19 +115,20 @@ class PointRoIHead(BaseRoIHead):
         if mask_pred is not None:
             pos_labels = torch.cat(
                 [res.pos_gt_labels for res in sampling_results])
-            point_coords = get_uncertain_point_coords_with_randomness(
+            roi_coords = get_uncertain_point_coords_with_randomness(
                 mask_pred,
                 pos_labels,
                 self.train_cfg.num_points,
                 self.train_cfg.oversample_ratio,
                 self.train_cfg.importance_sample_ratio,
             )
-
+            rois = bbox2roi([res.pos_bboxes for res in sampling_results])
             coarse_feats, fine_grained_feats = self.extract_point_feats(
-                x, point_coords, sampling_results, mask_pred)
+                x, rois, roi_coords, mask_pred)
             mask_point_pred = self.point_head(coarse_feats, fine_grained_feats)
+            pos_pois = roi2poi(rois, roi_coords)
             mask_point_target = self.point_head.get_target(
-                point_coords, sampling_results, gt_masks, self.train_cfg)
+                pos_pois, sampling_results, gt_masks, self.train_cfg)
             loss_mask_point = self.point_head.loss(mask_point_pred,
                                                    mask_point_target,
                                                    pos_labels)
@@ -136,15 +137,12 @@ class PointRoIHead(BaseRoIHead):
         else:
             return None
 
-    def extract_point_feats(self, x, point_coords, sampling_results,
-                            mask_pred):
-        pos_rois = bbox2roi([res.pos_bboxes for res in sampling_results])
-        coarse_feats = point_sample(
-            mask_pred, point_coords, align_corners=False)
+    def extract_point_feats(self, x, rois, roi_coords, mask_pred):
+        coarse_feats = point_sample(mask_pred, roi_coords, align_corners=False)
+        pois = roi2poi(rois, roi_coords)
 
         fine_grained_feats = self.point_extractor(
-            [x[i] for i in self.point_extractor.in_indices], pos_rois,
-            point_coords)
+            [x[i] for i in self.point_extractor.in_indices], pois)
         return coarse_feats, fine_grained_feats
 
     def refine_mask(self, x, mask_rois, label_pred, mask_pred):
@@ -156,20 +154,17 @@ class PointRoIHead(BaseRoIHead):
                 scale_factor=self.test_cfg.scale_factor,
                 mode='bilinear',
                 align_corners=False)
-            # If `mask_point_subdivision_num_points` is larger or equal to the
+            # If `subdivision_num_points` is larger or equal to the
             # resolution of the next step, then we can skip this step
             H, W = refined_mask_pred.shape[-2:]
             if (self.test_cfg.subdivision_num_points >= 4 * H * W and
                     subdivision_step < self.test_cfg.subdivision_steps - 1):
                 continue
-            point_indices, point_coords = get_uncertain_point_coords(
+            point_indices, roi_coords = get_uncertain_point_coords(
                 refined_mask_pred, label_pred,
                 self.test_cfg.subdivision_num_points)
-            fine_grained_feats = self.point_extractor(
-                [x[i] for i in self.point_extractor.in_indices], mask_rois,
-                point_coords)
-            coarse_feats = point_sample(
-                mask_pred, point_coords, align_corners=False)
+            coarse_feats, fine_grained_feats = self.extract_point_feats(
+                x, mask_rois, roi_coords, mask_pred)
             point_logits = self.point_head(coarse_feats, fine_grained_feats)
 
             R, C, H, W = refined_mask_pred.shape

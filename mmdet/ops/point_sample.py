@@ -38,16 +38,20 @@ def generate_grid(num_grid, size, device):
     return grid.view(1, -1, 2).expand(num_grid, -1, -1)
 
 
-def roi_point2img_coord(rois, roi_points):
+def roi_coord2img_coord(rois, points):
     with torch.no_grad():
-        assert roi_points.size(0) == rois.size(0)
-        img_coords = roi_points.clone()
+        assert points.size(0) == rois.size(0)
+        assert rois.dim() == 2
+        # remove batch idx
+        if rois.size(1) == 5:
+            rois = rois[:, 1:]
+        img_coords = points.clone()
         img_coords[:, :, 0] = img_coords[:, :, 0] * (
-            rois[:, None, -2] - rois[:, None, -4])
+            rois[:, None, 2] - rois[:, None, 0])
         img_coords[:, :, 1] = img_coords[:, :, 1] * (
-            rois[:, None, -1] - rois[:, None, -3])
-        img_coords[:, :, 0] += rois[:, None, -4]
-        img_coords[:, :, 1] += rois[:, None, -3]
+            rois[:, None, 3] - rois[:, None, 1])
+        img_coords[:, :, 0] += rois[:, None, 0]
+        img_coords[:, :, 1] += rois[:, None, 1]
     return img_coords
 
 
@@ -64,8 +68,8 @@ def roi2point(rois, out_size):
         that contains image-normalized coordinates of grid points.
     """
     with torch.no_grad():
-        roi_point = generate_grid(rois.size(0), out_size, rois.device)
-        img_coord = roi_point2img_coord(rois, roi_point)
+        grid = generate_grid(rois.size(0), out_size, rois.device)
+        img_coord = roi_coord2img_coord(rois, grid)
     return img_coord
 
 
@@ -107,4 +111,35 @@ def point_sample(input, point_coords, scale_factor=None, **kwargs):
         output = output.squeeze(3)
     if add_batch:
         output = output.squeeze(0)
+    return output
+
+
+def poi_align(input, pois, scale_factor=1.):
+    assert input.dim() == 4
+    assert pois.dim() == 3 and pois.size(2) == 3
+    num_rois = pois.size(0)
+    num_points = pois.size(1)
+    batch_size = input.size(0)
+    output = input.new_zeros((num_rois, input.size(1), num_points))
+    if num_rois > 0:
+        # pad to fit batch
+        padded_pois = pois.new_zeros((batch_size, num_rois, num_points, 3))
+        for batch_ind in range(batch_size):
+            inds = pois[:, 0, 0].long() == batch_ind
+            num_batch_rois = inds.sum().long()
+            # TODO: inds.any() triger CUDA error
+            # if inds.any():
+            if num_batch_rois > 0:
+                padded_pois[batch_ind, :num_batch_rois] = pois[inds]
+        padded_output = point_sample(
+            input, padded_pois[:, :, :, 1:], scale_factor=scale_factor)
+        for batch_ind in range(batch_size):
+            inds = pois[:, 0, 0].long() == batch_ind
+            num_batch_rois = inds.sum().long()
+            if num_batch_rois > 0:
+                # if inds.any():
+                output[inds] = padded_output[
+                    batch_ind, :, :num_batch_rois].transpose(0,
+                                                             1).contiguous()
+
     return output

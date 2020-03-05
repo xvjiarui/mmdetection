@@ -1,17 +1,8 @@
 import torch.nn as nn
 
 from mmdet.core import force_fp32
-from mmdet.ops.point_sample import point_sample, roi_point2img_coord
+from mmdet.ops.point_sample import poi_align
 from ..registry import POINT_EXTRACTORS
-
-
-def extract_point_feats(feats, rois, points, scale_factor=None):
-    coords = roi_point2img_coord(rois, points)
-    point_feats_t = point_sample(
-        feats, coords, scale_factor=scale_factor,
-        align_corners=False).transpose(0, 1)
-
-    return point_feats_t
 
 
 @POINT_EXTRACTORS.register_module
@@ -50,22 +41,18 @@ class MultiPointExtractor(nn.Module):
         pass
 
     @force_fp32(apply_to=('feats', ), out_fp16=True)
-    def forward(self, feats, rois, points):
-        batch_size = feats[0].size(0)
+    def forward(self, feats, pois):
+        num_rois = pois.size(0)
+        num_points = pois.size(1)
         num_levels = len(feats)
-        point_feats = feats[0].new_zeros(
-            rois.size(0), self.out_channels, points.size(1))
-        for batch_ind in range(batch_size):
-            offset = 0
-            for i in range(num_levels):
-                roi_inds = rois[:, 0] == batch_ind
-                if roi_inds.any():
-                    point_feats_t = extract_point_feats(
-                        feats[i][batch_ind],
-                        rois[roi_inds],
-                        points[roi_inds],
-                        scale_factor=float(self.featmap_strides[i]))
-                    point_feats[roi_inds, offset:offset +
-                                point_feats_t.size(1)] = point_feats_t
-                    offset += point_feats_t.size(1)
+        point_feats = feats[0].new_zeros(num_rois, self.out_channels,
+                                         num_points)
+        offset = 0
+        for i in range(num_levels):
+            if num_rois > 0:
+                point_feats_t = poi_align(feats[i], pois,
+                                          float(self.featmap_strides[i]))
+                point_feats[:, offset:offset +
+                            point_feats_t.size(1)] = point_feats_t
+                offset += point_feats_t.size(1)
         return point_feats
