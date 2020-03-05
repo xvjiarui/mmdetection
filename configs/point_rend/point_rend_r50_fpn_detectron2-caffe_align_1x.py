@@ -30,7 +30,7 @@ model = dict(
             type='CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
         loss_bbox=dict(type='SmoothL1Loss', beta=0.0, loss_weight=1.0)),
     roi_head=dict(
-        type='BaseRoIHead',
+        type='PointRoIHead',
         bbox_roi_extractor=dict(
             type='SingleRoIExtractor',
             roi_layer=dict(type='RoIAlign', out_size=7),
