@@ -186,10 +186,9 @@ log_config = dict(
     interval=50,
     hooks=[
         dict(type='TextLoggerHook'),
-        dict(type='TensorboardLoggerHook')
+        # dict(type='TensorboardLoggerHook')
     ])
 # yapf:enable
-evaluation = dict(interval=1)
 # runtime settings
 total_epochs = 12
 dist_params = dict(backend='nccl')
