@@ -20,6 +20,10 @@ def mask_point_target_single(pos_pois, pos_assigned_gt_inds, gt_masks, cfg):
         gt_masks_th = (
             torch.from_numpy(gt_masks).to(device).index_select(
                 0, pos_assigned_gt_inds).to(dtype=pos_pois.dtype))
+        fake_inds = (
+            torch.arange(num_pos, device=device).to(dtype=pos_pois.dtype))
+        fake_inds = fake_inds.view(-1, 1, 1).expand(-1, num_points, -1)
+        pos_pois = torch.cat([fake_inds, pos_pois[:, :, 1:]], dim=2)  # NxPx5
         targets = poi_align(gt_masks_th.unsqueeze(1), pos_pois).squeeze(1)
         mask_point_targets = (targets >= 0.5).float()
     else:

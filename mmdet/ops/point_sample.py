@@ -42,6 +42,7 @@ def roi_coord2img_coord(rois, points):
     with torch.no_grad():
         assert points.size(0) == rois.size(0)
         assert rois.dim() == 2
+        assert points.dim() == 3
         # remove batch idx
         if rois.size(1) == 5:
             rois = rois[:, 1:]
