@@ -1,6 +1,6 @@
 import torch
 
-from mmdet.ops.point_sample import poi_align
+from mmdet.ops import poi_align
 
 
 def mask_point_target(pos_pois_list, pos_assigned_gt_inds_list, gt_masks_list,

@@ -1,9 +1,9 @@
+# Modified from https://github.com/facebookresearch/detectron2/tree/master/projects/PointRend  # noqa
+
 import torch
 import torch.nn.functional as F
 
-from mmdet.core import (bbox2roi, get_uncertain_point_coords,
-                        get_uncertain_point_coords_with_randomness, roi2poi)
-from mmdet.ops.point_sample import point_sample
+from mmdet.core import bbox2roi, roi2poi
 from .. import builder
 from ..registry import HEADS
 from .base_roi_head import BaseRoIHead
@@ -115,17 +115,14 @@ class PointRoIHead(BaseRoIHead):
         if mask_pred is not None:
             pos_labels = torch.cat(
                 [res.pos_gt_labels for res in sampling_results])
-            roi_coords = get_uncertain_point_coords_with_randomness(
-                mask_pred,
-                pos_labels,
-                self.train_cfg.num_points,
-                self.train_cfg.oversample_ratio,
-                self.train_cfg.importance_sample_ratio,
-            )
+            roi_coords = self.point_head.get_roi_coords_train(
+                mask_pred, pos_labels, cfg=self.train_cfg)
             rois = bbox2roi([res.pos_bboxes for res in sampling_results])
-            coarse_feats, fine_grained_feats = self.extract_point_feats(
-                x, rois, roi_coords, mask_pred)
-            mask_point_pred = self.point_head(coarse_feats, fine_grained_feats)
+            pois = roi2poi(rois, roi_coords)
+            fine_grained_feats = self.point_extractor(
+                [x[i] for i in self.point_extractor.in_indices], pois)
+            mask_point_pred = self.point_head(mask_pred, roi_coords,
+                                              fine_grained_feats)
             pos_pois = roi2poi(rois, roi_coords)
             mask_point_target = self.point_head.get_target(
                 pos_pois, sampling_results, gt_masks, self.train_cfg)
@@ -137,15 +134,7 @@ class PointRoIHead(BaseRoIHead):
         else:
             return None
 
-    def extract_point_feats(self, x, rois, roi_coords, mask_pred):
-        coarse_feats = point_sample(mask_pred, roi_coords, align_corners=False)
-        pois = roi2poi(rois, roi_coords)
-
-        fine_grained_feats = self.point_extractor(
-            [x[i] for i in self.point_extractor.in_indices], pois)
-        return coarse_feats, fine_grained_feats
-
-    def refine_mask(self, x, mask_rois, label_pred, mask_pred):
+    def refine_mask(self, x, rois, label_pred, mask_pred):
 
         refined_mask_pred = mask_pred.clone()
         for subdivision_step in range(self.test_cfg.subdivision_steps):
@@ -156,22 +145,27 @@ class PointRoIHead(BaseRoIHead):
                 align_corners=False)
             # If `subdivision_num_points` is larger or equal to the
             # resolution of the next step, then we can skip this step
-            H, W = refined_mask_pred.shape[-2:]
-            if (self.test_cfg.subdivision_num_points >= 4 * H * W and
+            num_rois, channels, mask_height, mask_width = \
+                refined_mask_pred.shape
+            if (self.test_cfg.subdivision_num_points >=
+                    4 * mask_height * mask_width and
                     subdivision_step < self.test_cfg.subdivision_steps - 1):
                 continue
-            point_indices, roi_coords = get_uncertain_point_coords(
-                refined_mask_pred, label_pred,
-                self.test_cfg.subdivision_num_points)
-            coarse_feats, fine_grained_feats = self.extract_point_feats(
-                x, mask_rois, roi_coords, mask_pred)
-            point_logits = self.point_head(coarse_feats, fine_grained_feats)
+            point_indices, roi_coords = self.point_head.get_roi_coords_test(
+                refined_mask_pred, label_pred, cfg=self.test_cfg)
+            pois = roi2poi(rois, roi_coords)
+            fine_grained_feats = self.point_extractor(
+                [x[i] for i in self.point_extractor.in_indices], pois)
+            mask_point_pred = self.point_head(mask_pred, roi_coords,
+                                              fine_grained_feats)
 
-            R, C, H, W = refined_mask_pred.shape
-            point_indices = point_indices.unsqueeze(1).expand(-1, C, -1)
-            refined_mask_pred = (
-                refined_mask_pred.reshape(R, C, H * W).scatter_(
-                    2, point_indices, point_logits).view(R, C, H, W))
+            point_indices = point_indices.unsqueeze(1).expand(-1, channels, -1)
+            refined_mask_pred = refined_mask_pred.reshape(
+                num_rois, channels, mask_height * mask_width)
+            refined_mask_pred = refined_mask_pred.scatter_(
+                2, point_indices, mask_point_pred)
+            refined_mask_pred = refined_mask_pred.view(num_rois, channels,
+                                                       mask_height, mask_width)
 
             return refined_mask_pred
 

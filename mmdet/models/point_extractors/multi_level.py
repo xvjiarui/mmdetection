@@ -1,7 +1,7 @@
 import torch.nn as nn
 
 from mmdet.core import force_fp32
-from mmdet.ops.point_sample import poi_align
+from mmdet.ops import poi_align
 from ..registry import POINT_EXTRACTORS
 
 

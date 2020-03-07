@@ -39,10 +39,20 @@ def generate_grid(num_grid, size, device):
 
 
 def roi_coord2img_coord(rois, points):
+    """ Convert roi based coordinates to image based coordinates
+
+    Args:
+        rois (Tensor) : shape (n, 4) or (n, 5)
+        points (Tensor) : shape (n, p, 2)
+
+    Returns:
+        Tensor: shape (n, p, 2)
+    """
     with torch.no_grad():
         assert points.size(0) == rois.size(0)
         assert rois.dim() == 2
         assert points.dim() == 3
+        assert points.size(2) == 2
         # remove batch idx
         if rois.size(1) == 5:
             rois = rois[:, 1:]
@@ -54,24 +64,6 @@ def roi_coord2img_coord(rois, points):
         img_coords[:, :, 0] += rois[:, None, 0]
         img_coords[:, :, 1] += rois[:, None, 1]
     return img_coords
-
-
-def roi2point(rois, out_size):
-    """
-    Convert rois to image-level point coordinates with out_size.
-
-    Args:
-        rois (Tensor, [batch_ind, x1, y1, x2, y2]): roi coordinate.
-        out_size (tuple(int, int): The side size of the regular grid.
-
-    Returns:
-        point_coord (Tensor): shape (num_rois, out_size[0] * out_size[1], 2)
-        that contains image-normalized coordinates of grid points.
-    """
-    with torch.no_grad():
-        grid = generate_grid(rois.size(0), out_size, rois.device)
-        img_coord = roi_coord2img_coord(rois, grid)
-    return img_coord
 
 
 def point_sample(input, point_coords, scale_factor=None, **kwargs):
