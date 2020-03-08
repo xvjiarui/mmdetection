@@ -4,9 +4,8 @@ import numpy as np
 import pycocotools.mask as mask_utils
 import torch
 from torch.nn.modules.utils import _pair
-from mmdet.ops import roi_align
 
-from mmdet.ops import roi_align
+from mmdet.ops import SimpleRoIAlign
 
 
 def mask_target(pos_proposals_list, pos_assigned_gt_inds_list, gt_masks_list,
@@ -27,7 +26,7 @@ def mask_target(pos_proposals_list, pos_assigned_gt_inds_list, gt_masks_list,
 def mask_target_single_polygons(pos_proposals, pos_assigned_gt_inds, gt_masks,
                                 cfg):
     mask_size = cfg.mask_size
-    boxes = pos_proposals.to(torch.device("cpu")).numpy()
+    boxes = pos_proposals.to(torch.device('cpu')).numpy()
     num_pos = pos_proposals.size(0)
 
     if num_pos > 0:
@@ -68,6 +67,7 @@ def mask_target_single_bitmaps(pos_proposals, pos_assigned_gt_inds, gt_masks,
                                cfg):
     device = pos_proposals.device
     mask_size = _pair(cfg.mask_size)
+    crop_resize = SimpleRoIAlign(mask_size[::-1], 1.)
     num_pos = pos_proposals.size(0)
     fake_inds = (
         torch.arange(num_pos,
@@ -78,15 +78,10 @@ def mask_target_single_bitmaps(pos_proposals, pos_assigned_gt_inds, gt_masks,
         gt_masks_th = (
             torch.from_numpy(gt_masks).to(device).index_select(
                 0, pos_assigned_gt_inds).to(dtype=rois.dtype))
-        # Use RoIAlign could apparently accelerate the training (~0.1s/iter)
-        targets = (
-            roi_align(gt_masks_th[:, None, :, :], rois, mask_size[::-1], 1.0,
-                      0, True).squeeze(1))
+        targets = crop_resize(gt_masks_th.unsqueeze(1), rois).squeeze(1)
         # It is important to set the target > threshold rather
         # than >= (~0.5mAP)
         mask_targets = (targets >= 0.5).float()
     else:
         mask_targets = pos_proposals.new_zeros((0, ) + mask_size)
     return mask_targets
-
-
