@@ -1,7 +1,8 @@
-from PIL import Image
 import argparse
-import mmcv
 import os.path as osp
+
+import mmcv
+from PIL import Image
 
 
 def parse_args():

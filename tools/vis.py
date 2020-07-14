@@ -1,18 +1,17 @@
 import argparse
 import os.path as osp
-import os
 
+import matplotlib.pyplot as plt
 import mmcv
+import numpy as np
 import torch
 from mmcv import Config, DictAction
 from mmcv.parallel import MMDataParallel
-from mmcv.runner import init_dist, load_checkpoint
+from mmcv.runner import load_checkpoint
 
+from mmdet.core import tensor2imgs
 from mmdet.datasets import build_dataloader, build_dataset
 from mmdet.models import build_detector
-from mmdet.core import encode_mask_results, tensor2imgs
-import matplotlib.pyplot as plt
-import numpy as np
 
 
 def parse_args():
@@ -34,7 +33,8 @@ def main():
 
     assert args.show or args.show_dir, \
         ('Please specify at least one operation (save/eval/format/show the '
-         'results / save the results) with the argument "--show" or "--show-dir"')
+         'results / save the results) with the argument "--show" or "'
+         '--show-dir"')
 
     cfg = Config.fromfile(args.config)
     # set cudnn_benchmark
@@ -79,6 +79,7 @@ hidden_outputs = {}
 
 
 def context_mask_hook(name):
+
     def hook(module, input, output):
         x = input[0]
         batch, channel, height, width = x.size()
@@ -102,10 +103,7 @@ def register_context_mask_hook(model):
             print(f'{module_name} is registered')
 
 
-def single_gpu_vis(model,
-                   data_loader,
-                   show=False,
-                   out_dir=None):
+def single_gpu_vis(model, data_loader, show=False, out_dir=None):
     model.eval()
     register_context_mask_hook(model)
 
@@ -134,22 +132,27 @@ def single_gpu_vis(model,
 
                     hidden_output_np = hidden_output.detach().cpu().numpy()[0]
                     att_map = hidden_output_np.copy()
-                    att_map[hidden_output_np < (np.percentile(hidden_output_np,
-                                                              80))] = hidden_output_np.min()
+                    att_map[hidden_output_np < (np.percentile(
+                        hidden_output_np, 80))] = hidden_output_np.min()
                     att_map[hidden_output_np > (
                         np.percentile(hidden_output_np, 95))] = np.percentile(
-                        hidden_output_np, 95)
-                    hidden_output_show = mmcv.imresize_like(hidden_output_np,
-                                                            img_show)
-                    # plt.imshow(hidden_output_show / hidden_output_show.max(), cmap='viridis',
-                    #            interpolation='bilinear', vmin=0., vmax=1., alpha=0.5)
-                    plt.imshow(hidden_output_show, cmap='jet',
-                               interpolation='bilinear', alpha=0.3)
+                            hidden_output_np, 95)
+                    hidden_output_show = mmcv.imresize_like(
+                        hidden_output_np, img_show)
+                    # plt.imshow(hidden_output_show / hidden_output_show.max(),
+                    #            cmap='viridis',
+                    #            interpolation='bilinear', vmin=0., vmax=1.,
+                    #            alpha=0.5)
+                    plt.imshow(
+                        hidden_output_show,
+                        cmap='jet',
+                        interpolation='bilinear',
+                        alpha=0.3)
                     if out_dir is not None:
                         dst_dir = osp.join(out_dir, hidden_name)
                         mmcv.mkdir_or_exist(dst_dir)
-                        print(
-                            f"saving {osp.join(dst_dir, img_meta['ori_filename'])}")
+                        filename = img_meta['ori_filename']
+                        print(f'saving {osp.join(dst_dir, filename)}')
                         plt.savefig(
                             osp.join(dst_dir, img_meta['ori_filename']))
                     else:
