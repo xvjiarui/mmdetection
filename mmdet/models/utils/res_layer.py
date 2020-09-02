@@ -59,6 +59,7 @@ class ResLayer(nn.Sequential):
             downsample = nn.Sequential(*downsample)
 
         layers = []
+        plugins = kwargs.pop('plugins')
         if downsample_first:
             layers.append(
                 block(
@@ -70,7 +71,7 @@ class ResLayer(nn.Sequential):
                     norm_cfg=norm_cfg,
                     **kwargs))
             inplanes = planes * block.expansion
-            for _ in range(1, num_blocks):
+            for i in range(1, num_blocks):
                 layers.append(
                     block(
                         inplanes=inplanes,
@@ -78,6 +79,7 @@ class ResLayer(nn.Sequential):
                         stride=1,
                         conv_cfg=conv_cfg,
                         norm_cfg=norm_cfg,
+                        plugins=plugins if i == num_blocks - 2 else None,
                         **kwargs))
 
         else:  # downsample_first=False is for HourglassModule
