@@ -4,7 +4,7 @@ from .naive_synbn import NaiveSyncBatchNorm
 norm_cfg = {
     # format: layer_type: (abbreviation, module)
     'BN': ('bn', nn.BatchNorm2d),
-    'SyncBN': ('bn', nn.SyncBatchNorm),
+    'SyncBN': ('bn', NaiveSyncBatchNorm),
     'GN': ('gn', nn.GroupNorm),
     'ABN': ('bn', NaiveSyncBatchNorm),
     'SyncABN': ('bn', NaiveSyncBatchNorm),
