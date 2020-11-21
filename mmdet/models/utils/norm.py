@@ -46,11 +46,13 @@ def build_norm_layer(cfg, num_features, postfix=''):
     requires_grad = cfg_.pop('requires_grad', True)
     cfg_.setdefault('eps', 1e-5)
     if layer_type != 'GN':
-        if 'ABN' in layer_type:
-            cfg_.setdefault('activation', 'identity')
+        # use NaiveSyncBN instead
+        # if 'ABN' in layer_type:
+        #     cfg_.setdefault('activation', 'identity')
         layer = norm_layer(num_features, **cfg_)
-        if layer_type == 'SyncBN':
-            layer._specify_ddp_gpu_num(1)
+        # use NaiveSyncBN instead
+        # if layer_type == 'SyncBN':
+        #     layer._specify_ddp_gpu_num(1)
     else:
         assert 'num_groups' in cfg_
         layer = norm_layer(num_channels=num_features, **cfg_)
