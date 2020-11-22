@@ -104,7 +104,8 @@ train_pipeline = [
 data = dict(
     samples_per_gpu=2, workers_per_gpu=2, train=dict(pipeline=train_pipeline))
 optimizer = dict(paramwise_cfg=dict(dcn_offset_lr_mult=0.1))
-optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2))
+optimizer_config = dict(
+    _delete_=True, grad_clip=dict(max_norm=35, norm_type=2))
 # learning policy
 lr_config = dict(step=[28, 34])
 total_epochs = 36
