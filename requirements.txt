@@ -1,9 +1,16 @@
+=======
+-r requirements/build.txt
+-r requirements/optional.txt
+-r requirements/runtime.txt
+-r requirements/tests.txt
+<<<<<<< HEAD
+>>>>>>> v1.2.0
+imagecorruptions
+matplotlib
 mmcv>=0.2.10
 numpy
-matplotlib
+pycocotools
 six
 terminaltables
-pycocotools
 torch>=1.1
 torchvision
-imagecorruptions
