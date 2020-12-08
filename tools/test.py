@@ -5,12 +5,13 @@ import mmcv
 import torch
 from mmcv.parallel import MMDataParallel, MMDistributedDataParallel
 from mmcv.runner import get_dist_info, init_dist, load_checkpoint
-from tools.fuse_conv_bn import fuse_module
 
 from mmdet.apis import multi_gpu_test, single_gpu_test
 from mmdet.core import wrap_fp16_model
 from mmdet.datasets import build_dataloader, build_dataset
 from mmdet.models import build_detector
+
+# from tools.fuse_conv_bn import fuse_module
 
 
 class MultipleKVAction(argparse.Action):
@@ -134,8 +135,8 @@ def main():
     if fp16_cfg is not None:
         wrap_fp16_model(model)
     checkpoint = load_checkpoint(model, args.checkpoint, map_location='cpu')
-    if args.fuse_conv_bn:
-        model = fuse_module(model)
+    # if args.fuse_conv_bn:
+    #     model = fuse_module(model)
     # old versions did not save class info in checkpoints, this walkaround is
     # for backward compatibility
     if 'CLASSES' in checkpoint['meta']:

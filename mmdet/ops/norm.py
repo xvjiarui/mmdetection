@@ -1,15 +1,15 @@
 import torch.nn as nn
 
-from .naive_synbn import NaiveSyncBatchNorm
+# from .naive_synbn import NaiveSyncBatchNorm
 
 norm_cfg = {
     # format: layer_type: (abbreviation, module)
     'BN': ('bn', nn.BatchNorm2d),
-    'SyncBN': ('bn', NaiveSyncBatchNorm),
+    'SyncBN': ('bn', nn.BatchNorm2d),
     'GN': ('gn', nn.GroupNorm),
-    'ABN': ('bn', NaiveSyncBatchNorm),
-    'SyncABN': ('bn', NaiveSyncBatchNorm),
-    'NaiveSyncBN': ('bn', NaiveSyncBatchNorm)
+    'ABN': ('bn', nn.BatchNorm2d),
+    'SyncABN': ('bn', nn.BatchNorm2d),
+    'NaiveSyncBN': ('bn', nn.BatchNorm2d)
     # and potentially 'SN'
 }
 

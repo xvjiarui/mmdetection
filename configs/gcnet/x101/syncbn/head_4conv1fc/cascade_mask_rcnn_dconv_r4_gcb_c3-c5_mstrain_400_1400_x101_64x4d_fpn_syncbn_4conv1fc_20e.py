@@ -15,8 +15,8 @@ model = dict(
         frozen_stages=1,
         style='pytorch',
         dcn=dict(
-            modulated=False,
-            groups=64,
+            type='DCN',
+            # groups=64,
             deformable_groups=1,
             fallback_on_stride=False),
         stage_with_dcn=(False, True, True, True),
@@ -224,8 +224,10 @@ test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
         type='MultiScaleFlipAug',
-        img_scale=(1333, 800),
-        flip=False,
+        # img_scale=(1333, 800),
+        img_scale=[(1600, 400), (1600, 600), (1600, 800), (1600, 1000),
+                   (1600, 1200), (1600, 1400)],
+        flip=True,
         transforms=[
             dict(type='Resize', keep_ratio=True),
             dict(type='RandomFlip', flip_ratio=0.5),
@@ -250,8 +252,10 @@ data = dict(
         pipeline=test_pipeline),
     test=dict(
         type=dataset_type,
-        ann_file=data_root + 'annotations/instances_val2017.json',
-        img_prefix=data_root + 'val2017/',
+        # ann_file=data_root + 'annotations/instances_val2017.json',
+        # img_prefix=data_root + 'val2017/',
+        ann_file=data_root + 'annotations/image_info_test-dev2017.json',
+        img_prefix=data_root + 'test2017/',
         pipeline=test_pipeline))
 # optimizer
 optimizer = dict(type='SGD', lr=0.02, momentum=0.9, weight_decay=0.0001)
